@@ -4,12 +4,8 @@ yarm eliminates repetitive configuration tasks when cloning, initializing, or up
 
 ## Features
 
-- Interactive profile selection based on existing gitconfig files
-- Respects git `includeIf` directives - matching profiles are suggested first
-- Apply `user.name`, `user.email`, `user.signingkey`, and `commit.gpgsign` to repos
-- Apply profiles to existing repositories with `yarm apply`
-- Manage profiles interactively: create, edit, delete with `yarm profiles`
-- Progress display during clone operations
+- Easily create, list and edit profile-based gitconfig files with common identity- and environment-based settings
+- Apply profiles manually, based on folder location / remote URL or interactively choose a suitable profile on repo initialization or clone time
 - Shell completions for bash, zsh, fish, powershell, and elvish
 
 ## Installation
