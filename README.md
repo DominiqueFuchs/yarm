@@ -5,6 +5,7 @@ yarm eliminates repetitive configuration tasks when cloning, initializing, or up
 ## Features
 
 - Interactive profile selection based on existing gitconfig files
+- Respects git `includeIf` directives - matching profiles are suggested first
 - Apply `user.name`, `user.email`, `user.signingkey`, and `commit.gpgsign` to repos
 - Apply profiles to existing repositories with `yarm apply`
 - Manage profiles interactively: create, edit, delete with `yarm profiles`
@@ -102,3 +103,18 @@ yarm discovers profiles from two sources:
 | `.git/config` | local |
 
 Only files containing `user.name` or `user.email` are shown as selectable profiles.
+
+## includeIf Support
+
+yarm respects git's `includeIf` directives. If you have conditional includes in your `~/.gitconfig`, matching profiles are automatically promoted to the top of the selection list.
+
+```gitconfig
+# ~/.gitconfig
+[includeIf "gitdir:~/work/"]
+    path = ~/.gitconfig-work
+
+[includeIf "hasconfig:remote.*.url:*github.com/mycompany/*"]
+    path = ~/.gitconfig-work
+```
+
+When cloning or initializing a repo under `~/work/`, or cloning from `github.com/mycompany/*`, the `work` profile will be suggested first.

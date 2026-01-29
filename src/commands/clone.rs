@@ -8,7 +8,7 @@ use std::thread;
 use std::time::Duration;
 
 use crate::git;
-use crate::profile::{apply_profile, resolve_profile};
+use crate::profile::{apply_profile, resolve_profile_with_context, ProfileContext};
 use crate::term::{print_header, print_success};
 
 /// Executes the clone command flow
@@ -27,7 +27,8 @@ pub fn run(url: &str, path: Option<PathBuf>, profile_name: Option<&str>) -> Resu
     print_header("Cloning:", extract_repo_display_name(url));
     println!();
 
-    let Some(selected) = resolve_profile(profile_name)? else {
+    let context = ProfileContext::new(target.clone(), Some(url.to_string()));
+    let Some(selected) = resolve_profile_with_context(profile_name, &context)? else {
         return Ok(());
     };
 

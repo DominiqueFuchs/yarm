@@ -12,6 +12,199 @@ use crate::term::{is_cancelled, MenuLevel};
 pub const NO_PROFILES_ERROR: &str =
     "No git profiles found. Configure user.name/user.email in a gitconfig file.";
 
+/// Context for profile resolution - provides path/URL for includeIf matching
+#[derive(Debug, Default)]
+pub struct ProfileContext {
+    /// Target repository path (for gitdir: matching)
+    pub target_path: Option<PathBuf>,
+    /// Clone URL (for hasconfig:remote.*.url: matching)
+    pub clone_url: Option<String>,
+}
+
+impl ProfileContext {
+    pub fn new(path: PathBuf, url: Option<String>) -> Self {
+        Self {
+            target_path: Some(path),
+            clone_url: url,
+        }
+    }
+}
+
+/// An includeIf rule parsed from a gitconfig file
+#[derive(Debug, Clone)]
+struct IncludeIfRule {
+    /// The condition type and pattern (e.g., "gitdir:~/work/")
+    condition: String,
+    /// The included config file path
+    target_path: PathBuf,
+}
+
+impl IncludeIfRule {
+    /// Checks if this rule matches the given context
+    fn matches(&self, context: &ProfileContext) -> bool {
+        if let Some(pattern) = self.condition.strip_prefix("gitdir:") {
+            return self.matches_gitdir(pattern, context, false);
+        }
+        if let Some(pattern) = self.condition.strip_prefix("gitdir/i:") {
+            return self.matches_gitdir(pattern, context, true);
+        }
+        if let Some(pattern) = self.condition.strip_prefix("hasconfig:remote.*.url:") {
+            return self.matches_url(pattern, context);
+        }
+        false
+    }
+
+    /// Matches gitdir: patterns against the target path
+    fn matches_gitdir(&self, pattern: &str, context: &ProfileContext, case_insensitive: bool) -> bool {
+        let Some(target) = &context.target_path else {
+            return false;
+        };
+
+        let target = match target.canonicalize() {
+            Ok(p) => p,
+            Err(_) => target.clone(),
+        };
+
+        let expanded = expand_tilde(pattern);
+        let pattern_path = PathBuf::from(&expanded);
+
+        let pattern_normalized = match pattern_path.canonicalize() {
+            Ok(p) => p,
+            Err(_) => pattern_path,
+        };
+
+        let target_str = target.to_string_lossy();
+        let pattern_str = pattern_normalized.to_string_lossy();
+
+        let (target_cmp, pattern_cmp) = if case_insensitive {
+            (target_str.to_lowercase(), pattern_str.to_lowercase())
+        } else {
+            (target_str.to_string(), pattern_str.to_string())
+        };
+
+        if expanded.ends_with('/') || expanded.ends_with("/**") {
+            // Directory prefix match
+            let prefix = pattern_cmp.trim_end_matches('/').trim_end_matches("**");
+            target_cmp.starts_with(&prefix)
+        } else if expanded.contains('*') {
+            // Glob pattern - simple wildcard matching
+            glob_match(&pattern_cmp, &target_cmp)
+        } else {
+            // Exact match
+            target_cmp == pattern_cmp
+        }
+    }
+
+    /// Matches hasconfig:remote.*.url: patterns against the clone URL
+    fn matches_url(&self, pattern: &str, context: &ProfileContext) -> bool {
+        let Some(url) = &context.clone_url else {
+            return false;
+        };
+
+        glob_match(pattern, url)
+    }
+}
+
+/// Expands ~ to the home directory
+fn expand_tilde(path: &str) -> String {
+    if let Some(rest) = path.strip_prefix("~/") {
+        if let Some(home) = dirs::home_dir() {
+            return format!("{}/{}", home.display(), rest);
+        }
+    }
+    path.to_string()
+}
+
+/// Simple glob matching supporting * and **
+fn glob_match(pattern: &str, text: &str) -> bool {
+    let pattern_parts: Vec<&str> = pattern.split('*').collect();
+
+    if pattern_parts.len() == 1 {
+        return pattern == text;
+    }
+
+    let mut pos = 0;
+    for (i, part) in pattern_parts.iter().enumerate() {
+        if part.is_empty() {
+            continue;
+        }
+
+        if i == 0 {
+            if !text.starts_with(part) {
+                return false;
+            }
+            pos = part.len();
+        } else if i == pattern_parts.len() - 1 {
+            if !text.ends_with(part) {
+                return false;
+            }
+        } else {
+            if let Some(found) = text[pos..].find(part) {
+                pos += found + part.len();
+            } else {
+                return false;
+            }
+        }
+    }
+
+    true
+}
+
+/// Parses includeIf rules from all gitconfig files
+fn parse_include_if_rules() -> Vec<IncludeIfRule> {
+    let mut rules = Vec::new();
+
+    if let Some(home) = dirs::home_dir() {
+        let main_gitconfig = home.join(".gitconfig");
+        if main_gitconfig.exists() {
+            rules.extend(parse_include_if_from_file(&main_gitconfig));
+        }
+
+        let xdg_config = home.join(".config/git/config");
+        if xdg_config.exists() {
+            rules.extend(parse_include_if_from_file(&xdg_config));
+        }
+    }
+
+    rules
+}
+
+/// Parses includeIf rules from a single gitconfig file
+fn parse_include_if_from_file(path: &Path) -> Vec<IncludeIfRule> {
+    let mut rules = Vec::new();
+
+    let content = match fs::read_to_string(path) {
+        Ok(c) => c,
+        Err(_) => return rules,
+    };
+
+    let mut current_condition: Option<String> = None;
+
+    for line in content.lines() {
+        let line = line.trim();
+
+        if line.starts_with("[includeIf \"") && line.ends_with("\"]") {
+            let condition = &line[12..line.len() - 2];
+            current_condition = Some(condition.to_string());
+        } else if line.starts_with('[') {
+            current_condition = None;
+        } else if let Some(ref condition) = current_condition {
+            if let Some(path_value) = line.strip_prefix("path")
+                .and_then(|s| s.trim_start().strip_prefix('='))
+                .map(|s| s.trim())
+            {
+                let target = expand_tilde(path_value);
+                rules.push(IncludeIfRule {
+                    condition: condition.clone(),
+                    target_path: PathBuf::from(target),
+                });
+            }
+        }
+    }
+
+    rules
+}
+
 /// A discovered git identity profile
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Profile {
@@ -172,21 +365,68 @@ fn format_profile_display(profile: &Profile) -> String {
     parts.join(" ")
 }
 
-/// Discovers and resolves a profile, either by name or interactive selection.
+/// Discovers and resolves a profile with context for includeIf matching.
 ///
-/// This combines profile discovery, empty-check, and selection/lookup into one call.
+/// Profiles matching includeIf rules for the given context are promoted to the top.
 /// Returns `Ok(None)` if the user cancels the interactive selection.
-pub fn resolve_profile(profile_name: Option<&str>) -> Result<Option<Profile>> {
+pub fn resolve_profile_with_context(
+    profile_name: Option<&str>,
+    context: &ProfileContext,
+) -> Result<Option<Profile>> {
     let profiles = discover_profiles()?;
 
     if profiles.is_empty() {
         anyhow::bail!(NO_PROFILES_ERROR);
     }
 
+    let profiles = reorder_profiles_by_context(profiles, context);
+
     match profile_name {
         Some(name) => find_profile_by_name(&profiles, name).map(Some),
         None => select_profile(profiles),
     }
+}
+
+/// Reorders profiles so those matching includeIf rules come first
+fn reorder_profiles_by_context(profiles: Vec<Profile>, context: &ProfileContext) -> Vec<Profile> {
+    if context.target_path.is_none() && context.clone_url.is_none() {
+        return profiles;
+    }
+
+    let rules = parse_include_if_rules();
+    if rules.is_empty() {
+        return profiles;
+    }
+
+    let matching_sources: HashSet<PathBuf> = rules
+        .iter()
+        .filter(|rule| rule.matches(context))
+        .map(|rule| rule.target_path.clone())
+        .collect();
+
+    if matching_sources.is_empty() {
+        return profiles;
+    }
+
+    let mut matching = Vec::new();
+    let mut non_matching = Vec::new();
+
+    for profile in profiles {
+        let source_canonical = profile.source.canonicalize().unwrap_or_else(|_| profile.source.clone());
+        let matches = matching_sources.iter().any(|rule_target| {
+            let target_canonical = rule_target.canonicalize().unwrap_or_else(|_| rule_target.clone());
+            source_canonical == target_canonical
+        });
+
+        if matches {
+            matching.push(profile);
+        } else {
+            non_matching.push(profile);
+        }
+    }
+
+    matching.extend(non_matching);
+    matching
 }
 
 /// Interactive profile selection
@@ -624,5 +864,66 @@ file:/Users/test/.gitconfig	user.name=Second"#;
             profile.config_summary(),
             "Name: Jane Doe, Email: jane@example.com, GPG key: ABC123"
         );
+    }
+
+    #[test]
+    fn test_glob_match_exact() {
+        assert!(glob_match("hello", "hello"));
+        assert!(!glob_match("hello", "world"));
+    }
+
+    #[test]
+    fn test_glob_match_wildcard() {
+        assert!(glob_match("*.com", "example.com"));
+        assert!(glob_match("*.com", "test.com"));
+        assert!(!glob_match("*.com", "example.org"));
+    }
+
+    #[test]
+    fn test_glob_match_prefix_suffix() {
+        assert!(glob_match("https://*", "https://github.com"));
+        assert!(glob_match("*github.com*", "https://github.com/user/repo"));
+        assert!(!glob_match("https://*", "http://github.com"));
+    }
+
+    #[test]
+    fn test_glob_match_middle() {
+        assert!(glob_match("*github*repo*", "https://github.com/user/repo"));
+        assert!(!glob_match("*gitlab*repo*", "https://github.com/user/repo"));
+    }
+
+    #[test]
+    fn test_expand_tilde() {
+        let expanded = expand_tilde("~/work");
+        if let Some(home) = dirs::home_dir() {
+            assert!(expanded.starts_with(&home.to_string_lossy().to_string()));
+            assert!(expanded.ends_with("/work"));
+        }
+    }
+
+    #[test]
+    fn test_expand_tilde_no_tilde() {
+        assert_eq!(expand_tilde("/absolute/path"), "/absolute/path");
+        assert_eq!(expand_tilde("relative/path"), "relative/path");
+    }
+
+    #[test]
+    fn test_include_if_rule_url_match() {
+        let rule = IncludeIfRule {
+            condition: "hasconfig:remote.*.url:*github.com/mycompany/*".to_string(),
+            target_path: PathBuf::from("/test"),
+        };
+
+        let matching_context = ProfileContext {
+            target_path: None,
+            clone_url: Some("https://github.com/mycompany/project.git".to_string()),
+        };
+        assert!(rule.matches(&matching_context));
+
+        let non_matching_context = ProfileContext {
+            target_path: None,
+            clone_url: Some("https://github.com/other/project.git".to_string()),
+        };
+        assert!(!rule.matches(&non_matching_context));
     }
 }
