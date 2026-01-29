@@ -92,13 +92,24 @@ impl MenuLevel {
     /// Creates a Select prompt configured for this menu level
     /// Uses a simplified header style with dashes
     pub fn select<'a, T: Display>(&self, message: &'a str, options: Vec<T>) -> SimpleSelect<'a, T> {
+        self.select_with_default(message, options, 0)
+    }
+
+    /// Creates a Select prompt with a custom starting cursor position
+    pub fn select_with_default<'a, T: Display>(
+        &self,
+        message: &'a str,
+        options: Vec<T>,
+        default_idx: usize,
+    ) -> SimpleSelect<'a, T> {
         let config = RenderConfig::default()
             .with_prompt_prefix(Styled::new("── "))
             .with_answered_prompt_prefix(Styled::new("── "));
 
         let select = Select::new(message, options)
             .with_help_message(self.help())
-            .with_render_config(config);
+            .with_render_config(config)
+            .with_starting_cursor(default_idx);
 
         SimpleSelect::new(select)
     }

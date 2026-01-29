@@ -143,7 +143,9 @@ fn edit_profile() -> Result<()> {
     let old_name = profile.user_name.clone();
     let old_email = profile.user_email.clone();
     let old_key = profile.signing_key.clone();
+    let old_format = profile.gpg_format.clone();
     let old_gpg_sign = profile.gpg_sign;
+    let old_tag_gpg_sign = profile.tag_gpg_sign;
 
     let Some(new_name) = prompt_required_text("Name:", profile.user_name.as_deref())? else {
         return Ok(());
@@ -153,12 +155,40 @@ fn edit_profile() -> Result<()> {
         return Ok(());
     };
 
-    let Some(new_key) = prompt_text("GPG signing key:", profile.signing_key.as_deref())? else {
+    let Some(new_key) = prompt_text("Signing key:", profile.signing_key.as_deref())? else {
         return Ok(());
     };
 
-    let Some(new_gpg_sign) = prompt_confirm("Enable commit signing?", profile.gpg_sign.unwrap_or(false))? else {
-        return Ok(());
+    let (new_format, new_gpg_sign, new_tag_gpg_sign) = if new_key.is_empty() {
+        (None, false, false)
+    } else {
+        let current_format = profile.gpg_format.as_deref().unwrap_or("openpgp");
+        let format_options = vec!["openpgp (GPG)", "ssh", "x509"];
+        let default_idx = match current_format {
+            "ssh" => 1,
+            "x509" => 2,
+            _ => 0,
+        };
+        let format = match MenuLevel::Sub
+            .select_with_default("Signing format:", format_options, default_idx)
+            .prompt()
+        {
+            Ok(s) => s,
+            Err(e) if is_cancelled(&e) => return Ok(()),
+            Err(e) => return Err(e).context("Selection failed"),
+        };
+        let gpg_format = match format.split_whitespace().next().unwrap() {
+            "openpgp" => None,
+            f => Some(f.to_string()),
+        };
+
+        let Some(commit_sign) = prompt_confirm("Sign commits?", profile.gpg_sign.unwrap_or(false))? else {
+            return Ok(());
+        };
+        let Some(tag_sign) = prompt_confirm("Sign tags?", profile.tag_gpg_sign.unwrap_or(false))? else {
+            return Ok(());
+        };
+        (gpg_format, commit_sign, tag_sign)
     };
 
     // Apply changes
@@ -174,14 +204,26 @@ fn edit_profile() -> Result<()> {
 
     if new_key.is_empty() {
         git::set_config(path, "user.signingkey", None)?;
+        git::set_config(path, "gpg.format", None)?;
+        git::set_config(path, "commit.gpgsign", None)?;
+        git::set_config(path, "tag.gpgsign", None)?;
     } else {
         git::set_config(path, "user.signingkey", Some(&new_key))?;
-    }
-
-    if new_gpg_sign {
-        git::set_config(path, "commit.gpgsign", Some("true"))?;
-    } else {
-        git::set_config(path, "commit.gpgsign", None)?;
+        if let Some(ref format) = new_format {
+            git::set_config(path, "gpg.format", Some(format))?;
+        } else {
+            git::set_config(path, "gpg.format", None)?;
+        }
+        if new_gpg_sign {
+            git::set_config(path, "commit.gpgsign", Some("true"))?;
+        } else {
+            git::set_config(path, "commit.gpgsign", None)?;
+        }
+        if new_tag_gpg_sign {
+            git::set_config(path, "tag.gpgsign", Some("true"))?;
+        } else {
+            git::set_config(path, "tag.gpgsign", None)?;
+        }
     }
 
     println!();
@@ -190,11 +232,17 @@ fn edit_profile() -> Result<()> {
 
     print_field_diff("Name", old_name.as_deref(), Some(&new_name));
     print_field_diff("Email", old_email.as_deref(), if new_email.is_empty() { None } else { Some(&new_email) });
-    print_field_diff("GPG key", old_key.as_deref(), if new_key.is_empty() { None } else { Some(&new_key) });
+    print_field_diff("Signing key", old_key.as_deref(), if new_key.is_empty() { None } else { Some(&new_key) });
+    print_field_diff("Format", old_format.as_deref(), new_format.as_deref());
     print_field_diff(
-        "Signing",
+        "Sign commits",
         Some(if old_gpg_sign == Some(true) { "enabled" } else { "disabled" }),
         Some(if new_gpg_sign { "enabled" } else { "disabled" }),
+    );
+    print_field_diff(
+        "Sign tags",
+        Some(if old_tag_gpg_sign == Some(true) { "enabled" } else { "disabled" }),
+        Some(if new_tag_gpg_sign { "enabled" } else { "disabled" }),
     );
     println!();
 
@@ -288,17 +336,34 @@ fn create_profile() -> Result<()> {
         return Ok(());
     };
 
-    let Some(signing_key) = prompt_text("GPG signing key:", None)? else {
+    let Some(signing_key) = prompt_text("Signing key:", None)? else {
         return Ok(());
     };
 
-    let gpg_sign = if signing_key.is_empty() {
-        false
+    let (gpg_format, gpg_sign, tag_gpg_sign) = if signing_key.is_empty() {
+        (None, false, false)
     } else {
-        let Some(value) = prompt_confirm("Enable commit signing?", true)? else {
+        let format_options = vec!["openpgp (GPG)", "ssh", "x509"];
+        let format = match MenuLevel::Sub
+            .select("Signing format:", format_options)
+            .prompt()
+        {
+            Ok(s) => s,
+            Err(e) if is_cancelled(&e) => return Ok(()),
+            Err(e) => return Err(e).context("Selection failed"),
+        };
+        let gpg_format = match format.split_whitespace().next().unwrap() {
+            "openpgp" => None, // Default, no need to set
+            f => Some(f.to_string()),
+        };
+
+        let Some(commit_sign) = prompt_confirm("Sign commits?", true)? else {
             return Ok(());
         };
-        value
+        let Some(tag_sign) = prompt_confirm("Sign tags?", commit_sign)? else {
+            return Ok(());
+        };
+        (gpg_format, commit_sign, tag_sign)
     };
 
     fs::write(&path, "# Git profile configuration\n").context("Failed to create profile file")?;
@@ -310,8 +375,14 @@ fn create_profile() -> Result<()> {
     if !signing_key.is_empty() {
         git::set_config(&path, "user.signingkey", Some(&signing_key))?;
     }
+    if let Some(ref format) = gpg_format {
+        git::set_config(&path, "gpg.format", Some(format))?;
+    }
     if gpg_sign {
         git::set_config(&path, "commit.gpgsign", Some("true"))?;
+    }
+    if tag_gpg_sign {
+        git::set_config(&path, "tag.gpgsign", Some("true"))?;
     }
 
     println!();

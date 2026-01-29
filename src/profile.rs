@@ -220,6 +220,10 @@ pub struct Profile {
     pub signing_key: Option<String>,
     /// Git commit.gpgsign value
     pub gpg_sign: Option<bool>,
+    /// Git gpg.format value (openpgp, x509, ssh)
+    pub gpg_format: Option<String>,
+    /// Git tag.gpgsign value
+    pub tag_gpg_sign: Option<bool>,
 }
 
 /// A profile field with its display label and value
@@ -240,18 +244,31 @@ impl Profile {
             value: v,
         });
         let key = self.signing_key.as_deref().map(|v| ProfileField {
-            label: "GPG key",
+            label: "Signing key",
+            value: v,
+        });
+        let gpg_format = self.gpg_format.as_deref().map(|v| ProfileField {
+            label: "Signing format",
             value: v,
         });
         let gpg_sign = self
             .gpg_sign
             .filter(|&v| v)
             .map(|_| ProfileField {
-                label: "GPG signing",
+                label: "Sign commits",
+                value: "enabled",
+            });
+        let tag_gpg_sign = self
+            .tag_gpg_sign
+            .filter(|&v| v)
+            .map(|_| ProfileField {
+                label: "Sign tags",
                 value: "enabled",
             });
 
-        [name, email, key, gpg_sign].into_iter().flatten()
+        [name, email, key, gpg_format, gpg_sign, tag_gpg_sign]
+            .into_iter()
+            .flatten()
     }
 
     /// Returns a display string showing the config values that were applied
@@ -513,8 +530,16 @@ pub fn apply_profile(repo_path: &Path, profile: &Profile) -> Result<()> {
         git::set_config(repo_path, "user.signingkey", Some(key))?;
     }
 
+    if let Some(ref format) = profile.gpg_format {
+        git::set_config(repo_path, "gpg.format", Some(format))?;
+    }
+
     if let Some(gpg_sign) = profile.gpg_sign {
         git::set_config(repo_path, "commit.gpgsign", Some(if gpg_sign { "true" } else { "false" }))?;
+    }
+
+    if let Some(tag_gpg_sign) = profile.tag_gpg_sign {
+        git::set_config(repo_path, "tag.gpgsign", Some(if tag_gpg_sign { "true" } else { "false" }))?;
     }
 
     Ok(())
@@ -582,6 +607,8 @@ fn parse_gitconfig_file(path: &Path) -> Option<Profile> {
     let mut user_email = None;
     let mut signing_key = None;
     let mut gpg_sign = None;
+    let mut gpg_format = None;
+    let mut tag_gpg_sign = None;
 
     for line in stdout.lines() {
         if let Some((key, value)) = line.split_once('=') {
@@ -590,6 +617,8 @@ fn parse_gitconfig_file(path: &Path) -> Option<Profile> {
                 "user.email" => user_email = Some(value.to_string()),
                 "user.signingkey" => signing_key = Some(value.to_string()),
                 "commit.gpgsign" => gpg_sign = parse_bool(value),
+                "gpg.format" => gpg_format = Some(value.to_string()),
+                "tag.gpgsign" => tag_gpg_sign = parse_bool(value),
                 _ => {}
             }
         }
@@ -609,6 +638,8 @@ fn parse_gitconfig_file(path: &Path) -> Option<Profile> {
         user_email,
         signing_key,
         gpg_sign,
+        gpg_format,
+        tag_gpg_sign,
     })
 }
 
@@ -632,6 +663,8 @@ fn parse_git_config_output(output: &str) -> Vec<Profile> {
         let mut user_email = None;
         let mut signing_key = None;
         let mut gpg_sign = None;
+        let mut gpg_format = None;
+        let mut tag_gpg_sign = None;
 
         // Last-value-wins for duplicate keys (matches git behavior)
         for (key, value) in entries {
@@ -640,6 +673,8 @@ fn parse_git_config_output(output: &str) -> Vec<Profile> {
                 "user.email" => user_email = Some(value),
                 "user.signingkey" => signing_key = Some(value),
                 "commit.gpgsign" => gpg_sign = parse_bool(&value),
+                "gpg.format" => gpg_format = Some(value),
+                "tag.gpgsign" => tag_gpg_sign = parse_bool(&value),
                 _ => {}
             }
         }
@@ -657,6 +692,8 @@ fn parse_git_config_output(output: &str) -> Vec<Profile> {
             user_email,
             signing_key,
             gpg_sign,
+            gpg_format,
+            tag_gpg_sign,
         });
     }
 
@@ -841,11 +878,13 @@ file:/Users/test/.gitconfig	user.name=Second"#;
             user_email: Some("john@example.com".to_string()),
             signing_key: None,
             gpg_sign: Some(true),
+            gpg_format: None,
+            tag_gpg_sign: None,
         };
 
         assert_eq!(
             profile.config_summary(),
-            "Name: John Doe, Email: john@example.com, GPG signing: enabled"
+            "Name: John Doe, Email: john@example.com, Sign commits: enabled"
         );
     }
 
@@ -858,11 +897,13 @@ file:/Users/test/.gitconfig	user.name=Second"#;
             user_email: Some("jane@example.com".to_string()),
             signing_key: Some("ABC123".to_string()),
             gpg_sign: Some(false),
+            gpg_format: Some("ssh".to_string()),
+            tag_gpg_sign: Some(true),
         };
 
         assert_eq!(
             profile.config_summary(),
-            "Name: Jane Doe, Email: jane@example.com, GPG key: ABC123"
+            "Name: Jane Doe, Email: jane@example.com, Signing key: ABC123, Signing format: ssh, Sign tags: enabled"
         );
     }
 
