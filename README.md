@@ -1,11 +1,12 @@
 # yarm – Yet Another Repository Manager
 
-yarm eliminates repetitive configuration tasks when cloning or initializing git repositories.
+yarm eliminates repetitive configuration tasks when cloning, initializing, or updating git repositories.
 
 ## Features
 
 - Interactive profile selection based on existing gitconfig files
 - Apply `user.name`, `user.email`, `user.signingkey`, and `commit.gpgsign` to repos
+- Apply profiles to existing repositories with `yarm apply`
 - Manage profiles interactively: create, edit, delete with `yarm profiles`
 - Progress display during clone operations
 - Shell completions for bash, zsh, fish, powershell, and elvish
@@ -56,6 +57,19 @@ yarm init ~/projects/new-repo
 
 # Initialize with specific profile
 yarm init -p work
+```
+
+### Apply
+
+```bash
+# Apply profile to current repository
+yarm apply
+
+# Apply profile to specific repository
+yarm apply ~/projects/existing-repo
+
+# Apply specific profile (non-interactive)
+yarm apply -p work
 ```
 
 ## Shell Completions

@@ -40,6 +40,15 @@ enum Command {
         profile: Option<String>,
     },
 
+    /// Apply a profile to an existing repository
+    Apply {
+        /// Repository path (defaults to current directory)
+        path: Option<PathBuf>,
+        /// Use named profile instead of interactive selection
+        #[arg(short, long)]
+        profile: Option<String>,
+    },
+
     /// Manage git identity profiles
     Profiles {
         /// List profiles without interactive menu
@@ -64,6 +73,9 @@ fn main() -> Result<()> {
         }
         Command::Init { path, profile } => {
             commands::init::run(path, profile.as_deref())?;
+        }
+        Command::Apply { path, profile } => {
+            commands::apply::run(path, profile.as_deref())?;
         }
         Command::Profiles { show } => {
             commands::profiles::run(show)?;
