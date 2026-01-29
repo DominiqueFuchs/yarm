@@ -34,7 +34,9 @@ pub fn run(path: Option<PathBuf>, profile_name: Option<&str>) -> Result<()> {
     print_header("Initializing:", display_path.display());
     println!();
 
-    let selected = resolve_profile(profile_name)?;
+    let Some(selected) = resolve_profile(profile_name)? else {
+        return Ok(());
+    };
 
     init_repo(&target)?;
 

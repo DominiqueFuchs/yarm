@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use crate::git;
-use crate::term::MenuLevel;
+use crate::term::{is_cancelled, MenuLevel};
 
 /// Error message when no profiles are found
 pub const NO_PROFILES_ERROR: &str =
@@ -175,7 +175,8 @@ fn format_profile_display(profile: &Profile) -> String {
 /// Discovers and resolves a profile, either by name or interactive selection.
 ///
 /// This combines profile discovery, empty-check, and selection/lookup into one call.
-pub fn resolve_profile(profile_name: Option<&str>) -> Result<Profile> {
+/// Returns `Ok(None)` if the user cancels the interactive selection.
+pub fn resolve_profile(profile_name: Option<&str>) -> Result<Option<Profile>> {
     let profiles = discover_profiles()?;
 
     if profiles.is_empty() {
@@ -183,19 +184,24 @@ pub fn resolve_profile(profile_name: Option<&str>) -> Result<Profile> {
     }
 
     match profile_name {
-        Some(name) => find_profile_by_name(&profiles, name),
+        Some(name) => find_profile_by_name(&profiles, name).map(Some),
         None => select_profile(profiles),
     }
 }
 
 /// Interactive profile selection
-fn select_profile(profiles: Vec<Profile>) -> Result<Profile> {
+/// Returns `Ok(None)` if the user cancels.
+fn select_profile(profiles: Vec<Profile>) -> Result<Option<Profile>> {
     let options: Vec<String> = profiles.iter().map(format_profile_display).collect();
 
-    let selection = MenuLevel::Sub
+    let selection = match MenuLevel::Sub
         .select_filterable("Select profile:", options.clone())
         .prompt()
-        .context("Profile selection cancelled")?;
+    {
+        Ok(s) => s,
+        Err(e) if is_cancelled(&e) => return Ok(None),
+        Err(e) => return Err(e).context("Profile selection failed"),
+    };
 
     let selected_idx = options
         .iter()
@@ -207,7 +213,7 @@ fn select_profile(profiles: Vec<Profile>) -> Result<Profile> {
     let term = Term::stdout();
     let _ = term.clear_last_lines(1);
 
-    Ok(selected)
+    Ok(Some(selected))
 }
 
 /// Finds a profile by name with fallback matching

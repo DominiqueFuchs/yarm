@@ -27,7 +27,9 @@ pub fn run(path: Option<PathBuf>, profile_name: Option<&str>) -> Result<()> {
     print_header("Repository:", &display_path);
     println!();
 
-    let selected = resolve_profile(profile_name)?;
+    let Some(selected) = resolve_profile(profile_name)? else {
+        return Ok(());
+    };
 
     apply_profile(&target, &selected)?;
 
