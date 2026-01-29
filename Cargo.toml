@@ -1,0 +1,29 @@
+[package]
+name = "yarm"
+version = "0.1.0"
+edition = "2024"
+description = "Profile-aware CLI utility to simplify configuration and analysis of git repositories."
+repository = "https://github.com/DominiqueFuchs/yarm"
+readme = "README.md"
+license = "MIT"
+keywords = ["git", "cli", "profile", "repository", "identity"]
+categories = ["command-line-utilities", "development-tools"]
+exclude = [".github/"]
+
+[lints.clippy]
+pedantic = "warn"
+
+[dependencies]
+anyhow = "1.0.100"
+clap = { version = "4.5.55", features = ["derive"] }
+clap_complete = "4.5"
+console = "0.16.2"
+dirs = "6.0.0"
+indicatif = "0.18.3"
+inquire = "0.9.2"
+thiserror = "2.0.18"
+
+[profile.release]
+lto = true
+strip = true
+codegen-units = 1
