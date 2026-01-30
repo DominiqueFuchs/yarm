@@ -1,10 +1,12 @@
-use anyhow::{Context, Result};
-use console::{style, StyledObject, Term};
-use inquire::ui::{RenderConfig, Styled};
-use inquire::{Confirm, InquireError, Select, Text};
 use std::fmt::Display;
 use std::path::Path;
-use std::time::SystemTime;
+use std::time::{Duration, SystemTime};
+
+use anyhow::{Context, Result};
+use console::{style, StyledObject, Term};
+use indicatif::{ProgressBar, ProgressStyle};
+use inquire::ui::{RenderConfig, Styled};
+use inquire::{Confirm, InquireError, Select, Text};
 
 /// Returns a styled success icon (green ✓)
 pub fn icon_success() -> StyledObject<&'static str> {
@@ -87,6 +89,19 @@ pub fn eprint_warning(message: impl Display) {
 /// Prints a dimmed hint message to stderr
 pub fn eprint_hint(message: impl Display) {
     eprintln!("  {} {}", style("hint:").dim(), message);
+}
+
+/// Creates a styled spinner with the given initial message.
+pub fn spinner(message: &str) -> ProgressBar {
+    let pb = ProgressBar::new_spinner();
+    pb.set_style(
+        ProgressStyle::default_spinner()
+            .template("  {spinner:.cyan} {msg}")
+            .expect("valid template"),
+    );
+    pb.enable_steady_tick(Duration::from_millis(80));
+    pb.set_message(message.to_string());
+    pb
 }
 
 /// Manages terminal state for interactive menu sessions.

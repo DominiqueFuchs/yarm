@@ -1,11 +1,10 @@
-use anyhow::{Context, Result};
-use indicatif::{ProgressBar, ProgressStyle};
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::mpsc;
 use std::thread;
-use std::time::Duration;
+
+use anyhow::{Context, Result};
 
 use crate::git;
 use crate::profile::{apply_profile, resolve_profile_with_context, ProfileContext};
@@ -86,14 +85,7 @@ fn derive_target_from_url(url: &str) -> PathBuf {
 
 /// Clones the repository with progress spinner showing git stages
 fn clone_repo(url: &str, target: &Path) -> Result<()> {
-    let spinner = ProgressBar::new_spinner();
-    spinner.set_style(
-        ProgressStyle::default_spinner()
-            .template("  {spinner:.cyan} {msg}")
-            .expect("valid template"),
-    );
-    spinner.set_message("Cloning repository...");
-    spinner.enable_steady_tick(Duration::from_millis(80));
+    let spinner = crate::term::spinner("Cloning repository...");
 
     let mut child = Command::new("git")
         .args(["clone", "--progress", url, &target.to_string_lossy()])

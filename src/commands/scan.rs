@@ -1,10 +1,8 @@
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::time::Duration;
 
 use anyhow::{Context, Result};
 use globset::{GlobBuilder, GlobSet, GlobSetBuilder};
-use indicatif::{ProgressBar, ProgressStyle};
 
 use crate::state::State;
 use crate::term::{print_success, print_warning};
@@ -28,13 +26,7 @@ pub fn run() -> Result<()> {
 
     let exclude = build_exclude_set(&config.repositories.exclude)?;
 
-    let spinner = ProgressBar::new_spinner();
-    spinner.set_style(
-        ProgressStyle::default_spinner()
-            .template("  {spinner:.cyan} {msg}")
-            .expect("valid template"),
-    );
-    spinner.enable_steady_tick(Duration::from_millis(80));
+    let spinner = crate::term::spinner("");
 
     let mut repos = Vec::new();
     let mut pool_count = 0;

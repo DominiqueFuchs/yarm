@@ -1,11 +1,10 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process;
-use std::time::{Duration, SystemTime};
+use std::time::SystemTime;
 
 use anyhow::Result;
 use console::style;
-use indicatif::{ProgressBar, ProgressStyle};
 
 use crate::git;
 use crate::term::{format_elapsed, print_header, print_warning};
@@ -28,14 +27,7 @@ pub fn run(repo: Option<String>) -> Result<()> {
     let dirty = git::is_dirty(&repo_path)?;
     let fetch_time = last_fetch_time(&repo_path);
 
-    let spinner = ProgressBar::new_spinner();
-    spinner.set_style(
-        ProgressStyle::default_spinner()
-            .template("  {spinner:.cyan} {msg}")
-            .expect("valid template"),
-    );
-    spinner.enable_steady_tick(Duration::from_millis(80));
-    spinner.set_message("Calculating size...");
+    let spinner = crate::term::spinner("Calculating size...");
 
     let (total_size, file_count, dir_count) = dir_stats(&repo_path);
 
