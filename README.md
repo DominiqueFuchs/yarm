@@ -1,12 +1,10 @@
 # yarm – Yet Another Repository Manager
 
-yarm eliminates repetitive configuration tasks when cloning, initializing, or updating git repositories.
+A small workflow utility for managing local git repositories. It handles git identity configuration via profiles and keeps track of repositories across directory pools.
 
-## Features
-
-- Easily create, list and edit profile-based gitconfig files with common identity- and environment-based settings
-- Apply profiles manually, based on folder location / remote URL or interactively choose a suitable profile on repo initialization or clone time
-- Shell completions for bash, zsh, fish, powershell, and elvish
+- **Profiles** — create, edit, and apply gitconfig-based identity profiles (`user.name`, `user.email`, GPG settings). Profiles are selected interactively or matched automatically via git's `includeIf` rules.
+- **Repository tracking** — scan directory pools, look up repositories by name, jump to them via a shell function (`ye`), and inspect repo status at a glance.
+- **Shell completions** for bash, zsh, fish, powershell, and elvish.
 
 ## Installation
 
@@ -18,132 +16,69 @@ cargo install yarm
 cargo install --path .
 ```
 
+Recommended: install [shell completions](#shell-completions-and-functions) for tab completion and the `ye` jump function.
+
+## Getting Started
+
+```bash
+# 1. Clone a repo with interactive profile selection
+yarm clone https://github.com/dominiquefuchs/yarm.git
+
+# 2. Scan repository pools (edit ~/.config/yarm.toml — see Configuration below)
+yarm scan
+
+# 3. Jump to a repository (uses the `ye` shell function from completions)
+ye my-repo
+
+# 4. Check on the current repository
+yarm stat
+```
+
 ## Usage
 
 ### Profiles
 
 ```bash
-# Manage profiles interactively (create, edit, delete)
-yarm profiles
-
-# List profiles without interactive menu
-yarm profiles --show
+yarm profiles            # Manage profiles interactively (create, edit, delete)
+yarm profiles --show     # List all discovered profiles
 ```
 
-### Clone
+### Clone / Init / Apply
+
+All three accept an optional `-p <profile>` flag to skip interactive selection.
 
 ```bash
-# Clone with interactive profile selection
-yarm clone https://github.com/someone/repo.git
-
-# Clone to specific directory
-yarm clone https://github.com/someone/repo.git ~/projects/repo
-
-# Clone with specific profile (non-interactive)
-yarm clone https://github.com/someone/repo.git -p work
+yarm clone <url> [path]  # Clone and apply a profile
+yarm init [path]         # git init and apply a profile
+yarm apply [path]        # Apply a profile to an existing repo
 ```
 
-### Init
+### Repository Tools
 
 ```bash
-# Initialize current directory with profile selection
-yarm init
-
-# Initialize specific directory
-yarm init ~/projects/new-repo
-
-# Initialize with specific profile
-yarm init -p work
+yarm scan                # Scan configured pools for git repositories
+yarm find <name>         # Print full path of a repository by name
+yarm stat [repo]         # Show branch, remote, status, size, last fetch
+yarm status              # Show pool overview and scan state
 ```
 
-### Apply
+`find` matches by basename first (case-insensitive), then by path suffix. Use path fragments to disambiguate: `yarm find work/my-repo`.
+
+`stat` accepts a repository name, path, or defaults to the current directory.
+
+### Shell Completions and functions
 
 ```bash
-# Apply profile to current repository
-yarm apply
-
-# Apply profile to specific repository
-yarm apply ~/projects/existing-repo
-
-# Apply specific profile (non-interactive)
-yarm apply -p work
-```
-
-### Scan
-
-```bash
-# Scan configured repository pools for git repositories
-yarm scan
-```
-
-Recursively walks each directory listed in `repositories.pools` and updates corresponding tracking data. Directories matching `repositories.exclude` glob patterns are skipped.
-
-Exclude patterns are matched against the **path relative to the pool root**. Use `**/` to match at any depth:
-
-| Pattern | Matches | Does not match |
-|---------|---------|----------------|
-| `[Bb]uild` | `build/`, `Build/` | `foo/build/`, `build-tool/` |
-| `**/[Bb]uild` | `build/`, `foo/build/`, `a/b/Build/` | `build-tool/` |
-| `project/external` | `project/external/` | `external/`, `other/external/` |
-
-### Find
-
-```bash
-# Print the full path of a repository by name
-yarm find my-repo
-
-# Disambiguate with path fragments
-yarm find work/my-repo
-```
-
-Matches repository names from the last scan. Tries exact basename match first (case-insensitive), then falls back to path suffix matching. Prints the full path to stdout on success, or an error to stderr on failure.
-
-Designed for use with the `ye` shell function (see [Shell Completions](#shell-completions)).
-
-### Stat
-
-```bash
-# Show info about the current repository
-yarm stat
-
-# Show info about a repository by name
-yarm stat my-repo
-
-# Show info about a repository by path
-yarm stat ~/projects/my-repo
-```
-
-Displays repository information: current branch, remote URL, working tree status, upstream tracking, disk size, and last fetch time. When given a name, resolves it against scanned repositories (like `find`). Defaults to the current directory.
-
-### Status
-
-```bash
-# Show repository pool status
-yarm status
-```
-
-Displays configured pool directories and the number of scanned repositories in each.
-
-## Shell Completions
-
-```bash
-# Zsh
-yarm completions zsh > ~/.zfunc/_yarm
-# Add to .zshrc: fpath+=~/.zfunc && autoload -Uz compinit && compinit
-
-# Bash
+# Generate completions (includes the `ye` jump function)
+yarm completions zsh  > ~/.zfunc/_yarm
 yarm completions bash > /etc/bash_completion.d/yarm
-# Or: eval "$(yarm completions bash)"
-
-# Fish
 yarm completions fish > ~/.config/fish/completions/yarm.fish
 ```
 
-Shell completions also include a `ye` wrapper function that uses `yarm find` to navigate to a repository:
+The `ye` function uses `yarm find` under the hood to `cd` into a repository by name:
 
 ```bash
-# Jump to a repository
-ye my-repo
+ye my-repo    # cd to the repository
 ```
 
 ## Profile Discovery
@@ -163,9 +98,9 @@ yarm discovers profiles from three sources:
 
 Only files containing `user.name` or `user.email` are shown as selectable profiles.
 
-## includeIf Support
+### includeIf Support
 
-yarm respects git's `includeIf` directives. If you have conditional includes in your `~/.gitconfig`, matching profiles are automatically promoted to the top of the selection list.
+yarm respects git's `includeIf` directives. Matching profiles are automatically promoted to the top of the selection list.
 
 ```gitconfig
 # ~/.gitconfig
@@ -180,7 +115,7 @@ When cloning or initializing a repo under `~/work/`, or cloning from `github.com
 
 ## Configuration
 
-yarm can be configured via `~/.config/yarm.toml`.
+`~/.config/yarm.toml`
 
 ```toml
 [profiles]
@@ -194,13 +129,14 @@ paths = [
 ]
 
 [repositories]
-# Directories where repositories are expected to reside
+# Directories containing git repositories
 pools = [
     "~/projects",
     "~/work"
 ]
 
-# Glob patterns for directories to skip during scan (matched against path relative to pool root)
+# Glob patterns for directories to skip during scan
+# Matched against the path relative to the pool root; use **/ for any depth
 exclude = [
     "**/[Bb]uild"
 ]
@@ -210,5 +146,5 @@ exclude = [
 |-----|-------------|
 | `profiles.default` | Profile to pre-select when no `-p` flag and no `includeIf` rule applies |
 | `profiles.paths` | Additional directories to scan for gitconfig files |
-| `repositories.pools` | Directories where repositories are expected to reside |
+| `repositories.pools` | Directories containing git repositories |
 | `repositories.exclude` | Glob patterns for directories to skip during `yarm scan` |
