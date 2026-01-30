@@ -4,10 +4,10 @@ use std::fmt;
 use std::fs;
 
 use crate::git;
-use crate::profile::{discover_profiles, format_source_path, Profile};
+use crate::profile::{discover_profiles, Profile};
 use crate::term::{
-    is_cancelled, print_success, print_warning, prompt_confirm, prompt_required_text, prompt_text,
-    prompt_text_with_help, MenuLevel, MenuSession,
+    format_home_path, is_cancelled, print_success, print_warning, prompt_confirm,
+    prompt_required_text, prompt_text, prompt_text_with_help, MenuLevel, MenuSession,
 };
 
 /// Menu options for profile management
@@ -66,7 +66,7 @@ fn show_profiles() -> Result<()> {
 
 /// Prints a single profile's details
 fn print_profile(profile: &Profile) {
-    let source_display = format_source_path(&profile.source);
+    let source_display = format_home_path(&profile.source);
 
     println!(
         "  {} {}",
@@ -136,7 +136,7 @@ fn edit_profile() -> Result<()> {
 
     println!();
     println!("  Editing: {}", style(&profile.name).bold());
-    println!("  Source:  {}", format_source_path(&profile.source));
+    println!("  Source:  {}", format_home_path(&profile.source));
     println!();
 
     // Store old values for diff
@@ -323,7 +323,7 @@ fn create_profile() -> Result<()> {
     if path.exists() {
         print_warning(format!(
             "Profile file already exists: {}",
-            format_source_path(&path)
+            format_home_path(&path)
         ));
         return Ok(());
     }
@@ -389,7 +389,7 @@ fn create_profile() -> Result<()> {
     print_success(format!(
         "Created profile '{}' at {}",
         name,
-        format_source_path(&path)
+        format_home_path(&path)
     ));
     println!();
 

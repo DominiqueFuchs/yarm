@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use crate::git;
-use crate::term::{is_cancelled, MenuLevel};
+use crate::term::{format_home_path, is_cancelled, MenuLevel};
 
 /// Error message when no profiles are found
 pub const NO_PROFILES_ERROR: &str =
@@ -281,7 +281,7 @@ impl Profile {
 
     /// Returns a display string for menu selection: "name (~/path/to/source)"
     pub fn display_option(&self) -> String {
-        format!("{} ({})", self.name, format_source_path(&self.source))
+        format!("{} ({})", self.name, format_home_path(&self.source))
     }
 }
 
@@ -348,16 +348,6 @@ pub fn discover_profiles() -> Result<Vec<Profile>> {
     Ok(profiles)
 }
 
-/// Formats a path for display, using ~ for home directory
-pub fn format_source_path(path: &Path) -> String {
-    if let Some(home) = dirs::home_dir()
-        && let Ok(relative) = path.strip_prefix(&home)
-    {
-        return format!("~/{}", relative.display());
-    }
-    path.display().to_string()
-}
-
 /// Formats a profile for display
 fn format_profile_display(profile: &Profile) -> String {
     let mut parts = Vec::new();
@@ -380,7 +370,7 @@ fn format_profile_display(profile: &Profile) -> String {
         parts.push(format!("[{}]", attrs.join(", ")));
     }
 
-    let source_display = format_source_path(&profile.source);
+    let source_display = format_home_path(&profile.source);
     parts.push(format!("({source_display})"));
 
     parts.join(" ")
@@ -821,6 +811,14 @@ mod tests {
         let (_, key, value) = result.unwrap();
         assert_eq!(key, "core.editor");
         assert_eq!(value, "code --wait");
+    }
+
+    #[test]
+    fn test_parse_config_line_preserves_equals_in_value() {
+        let line = "file:/Users/test/.gitconfig\tcore.sshCommand=ssh -o SendEnv=GIT_PROTOCOL";
+        let (_, key, value) = parse_config_line(line).unwrap();
+        assert_eq!(key, "core.sshCommand");
+        assert_eq!(value, "ssh -o SendEnv=GIT_PROTOCOL");
     }
 
     #[test]

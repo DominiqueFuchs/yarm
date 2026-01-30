@@ -3,6 +3,7 @@ use console::{style, StyledObject, Term};
 use inquire::ui::{RenderConfig, Styled};
 use inquire::{Confirm, InquireError, Select, Text};
 use std::fmt::Display;
+use std::path::Path;
 use std::time::SystemTime;
 
 /// Returns a styled success icon (green ✓)
@@ -66,6 +67,16 @@ pub fn format_elapsed(time: SystemTime) -> String {
     let days = hours / 24;
     let label = if days == 1 { "day" } else { "days" };
     format!("{days} {label} ago")
+}
+
+/// Formats a path for display, replacing the home directory prefix with `~`.
+pub fn format_home_path(path: &Path) -> String {
+    if let Some(home) = dirs::home_dir()
+        && let Ok(rest) = path.strip_prefix(&home)
+    {
+        return format!("~/{}", rest.display());
+    }
+    path.display().to_string()
 }
 
 /// Prints a warning message to stderr

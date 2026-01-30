@@ -1,7 +1,7 @@
 use anyhow::Result;
 use console::style;
 
-use crate::term::{format_elapsed, print_hint, print_warning};
+use crate::term::{format_elapsed, format_home_path, print_hint, print_warning};
 
 /// Executes the status command flow
 pub fn run(full: bool) -> Result<()> {
@@ -33,7 +33,7 @@ pub fn run(full: bool) -> Result<()> {
         let repo_count = pool_repos.len();
 
         let exists = pool.is_dir();
-        let path_display = format_pool_path(pool);
+        let path_display = format_home_path(pool);
 
         if !exists {
             println!(
@@ -100,11 +100,3 @@ fn print_repo_list(repos: &[&std::path::PathBuf], pool: &std::path::Path) {
     }
 }
 
-fn format_pool_path(path: &std::path::Path) -> String {
-    if let Some(home) = dirs::home_dir() {
-        if let Ok(rest) = path.strip_prefix(&home) {
-            return format!("~/{}", rest.display());
-        }
-    }
-    path.display().to_string()
-}

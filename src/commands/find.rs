@@ -3,7 +3,7 @@ use std::process;
 
 use anyhow::{bail, Context, Result};
 
-use crate::term::{eprint_hint, eprint_warning};
+use crate::term::{eprint_hint, eprint_warning, format_home_path};
 
 /// Executes the find command flow
 pub fn run(repo: &str) -> Result<()> {
@@ -32,7 +32,7 @@ pub fn run(repo: &str) -> Result<()> {
         _ => {
             eprint_warning(format!("Ambiguous match '{repo}', found {} repositories:", matches.len()));
             for m in &matches {
-                eprintln!("  {}", format_display_path(m));
+                eprintln!("  {}", format_home_path(m));
             }
             process::exit(1);
         }
@@ -134,14 +134,6 @@ fn find_suggestion(repos: &[PathBuf], query: &str) -> Option<String> {
         .map(|(_, name)| name)
 }
 
-fn format_display_path(path: &Path) -> String {
-    if let Some(home) = dirs::home_dir()
-        && let Ok(rest) = path.strip_prefix(&home)
-    {
-        return format!("~/{}", rest.display());
-    }
-    path.display().to_string()
-}
 
 #[cfg(test)]
 mod tests {
