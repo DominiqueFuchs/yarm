@@ -86,6 +86,20 @@ Exclude patterns are matched against the **path relative to the pool root**. Use
 | `**/[Bb]uild` | `build/`, `foo/build/`, `a/b/Build/` | `build-tool/` |
 | `project/external` | `project/external/` | `external/`, `other/external/` |
 
+### Find
+
+```bash
+# Print the full path of a repository by name
+yarm find my-repo
+
+# Disambiguate with path fragments
+yarm find work/my-repo
+```
+
+Matches repository names from the last scan. Tries exact basename match first (case-insensitive), then falls back to path suffix matching. Prints the full path to stdout on success, or an error to stderr on failure.
+
+Designed for use with the `ye` shell function (see [Shell Completions](#shell-completions)).
+
 ### Status
 
 ```bash
@@ -108,6 +122,13 @@ yarm completions bash > /etc/bash_completion.d/yarm
 
 # Fish
 yarm completions fish > ~/.config/fish/completions/yarm.fish
+```
+
+Shell completions also include a `ye` wrapper function that uses `yarm find` to navigate to a repository:
+
+```bash
+# Jump to a repository
+ye my-repo
 ```
 
 ## Profile Discovery

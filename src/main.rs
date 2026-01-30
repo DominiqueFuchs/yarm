@@ -58,6 +58,12 @@ enum Command {
         show: bool,
     },
 
+    /// Print the full path of a scanned repository
+    Find {
+        /// Repository name or path fragment to match
+        repo: String,
+    },
+
     /// Scan repository pools for git repositories
     Scan,
 
@@ -76,6 +82,24 @@ enum Command {
     },
 }
 
+fn ye_function(shell: Shell) -> &'static str {
+    match shell {
+        Shell::Bash | Shell::Zsh => {
+            "\nye() {\n  local dir\n  dir=\"$(command yarm find \"$@\")\" && cd \"$dir\"\n}\n"
+        }
+        Shell::Fish => {
+            "\nfunction ye\n  set -l dir (command yarm find $argv)\n  and cd $dir\nend\n"
+        }
+        Shell::PowerShell => {
+            "\nfunction ye { $d = yarm find @args; if ($LASTEXITCODE -eq 0) { Set-Location $d } }\n"
+        }
+        Shell::Elvish => {
+            "\nfn ye {|@args| var dir = (yarm find $@args); cd $dir }\n"
+        }
+        _ => "",
+    }
+}
+
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
@@ -92,6 +116,9 @@ fn main() -> Result<()> {
         Command::Profiles { show } => {
             commands::profiles::run(show)?;
         }
+        Command::Find { repo } => {
+            commands::find::run(&repo)?;
+        }
         Command::Scan => {
             commands::scan::run()?;
         }
@@ -100,6 +127,7 @@ fn main() -> Result<()> {
         }
         Command::Completions { shell } => {
             generate(shell, &mut Cli::command(), "yarm", &mut io::stdout());
+            print!("{}", ye_function(shell));
         }
     }
 

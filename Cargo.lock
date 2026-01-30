@@ -936,6 +936,7 @@ dependencies = [
  "indicatif",
  "inquire",
  "serde",
+ "strsim",
  "thiserror",
  "toml",
 ]

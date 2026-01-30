@@ -39,6 +39,16 @@ pub fn print_hint(message: impl Display) {
     println!("  {} {}", style("hint:").dim(), message);
 }
 
+/// Prints a warning message to stderr
+pub fn eprint_warning(message: impl Display) {
+    eprintln!("  {} {}", icon_warning(), message);
+}
+
+/// Prints a dimmed hint message to stderr
+pub fn eprint_hint(message: impl Display) {
+    eprintln!("  {} {}", style("hint:").dim(), message);
+}
+
 /// Manages terminal state for interactive menu sessions.
 /// Handles clearing previous menu output between iterations.
 pub struct MenuSession {
