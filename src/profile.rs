@@ -287,13 +287,17 @@ impl Profile {
 
 /// Discovers git identity profiles from gitconfig files.
 ///
-/// This discovers profiles from two sources:
+/// This discovers profiles from three sources:
 /// 1. Files git knows about (`git config --list --show-origin`)
 /// 2. Additional `*.gitconfig` files in common locations
+/// 3. Custom directories from yarm configuration (`~/.config/yarm/config.toml`)
 ///
 /// Profiles are ordered: current effective profile first, then git-known
 /// profiles alphabetically, then additional discovered profiles alphabetically.
 pub fn discover_profiles() -> Result<Vec<Profile>> {
+    let config = crate::config::load()?;
+    let extra_paths = config.profile_paths();
+
     let mut git_profiles = Vec::new();
     let mut additional_profiles = Vec::new();
     let mut seen_sources: HashSet<PathBuf> = HashSet::new();
@@ -314,7 +318,7 @@ pub fn discover_profiles() -> Result<Vec<Profile>> {
         }
     }
 
-    for path in find_gitconfig_files() {
+    for path in find_gitconfig_files(&extra_paths) {
         if seen_sources.contains(&path) {
             continue;
         }
@@ -390,13 +394,18 @@ pub fn resolve_profile_with_context(
     profile_name: Option<&str>,
     context: &ProfileContext,
 ) -> Result<Option<Profile>> {
+    let config = crate::config::load()?;
     let profiles = discover_profiles()?;
 
     if profiles.is_empty() {
         anyhow::bail!(NO_PROFILES_ERROR);
     }
 
-    let profiles = reorder_profiles_by_context(profiles, context);
+    let profiles = reorder_profiles_by_context(
+        profiles,
+        context,
+        config.profiles.default.as_deref(),
+    );
 
     match profile_name {
         Some(name) => find_profile_by_name(&profiles, name).map(Some),
@@ -404,46 +413,66 @@ pub fn resolve_profile_with_context(
     }
 }
 
-/// Reorders profiles so those matching includeIf rules come first
-fn reorder_profiles_by_context(profiles: Vec<Profile>, context: &ProfileContext) -> Vec<Profile> {
-    if context.target_path.is_none() && context.clone_url.is_none() {
-        return profiles;
-    }
+/// Reorders profiles so those matching includeIf rules come first.
+/// Falls back to promoting the configured default profile if no rules match.
+fn reorder_profiles_by_context(
+    profiles: Vec<Profile>,
+    context: &ProfileContext,
+    default_profile: Option<&str>,
+) -> Vec<Profile> {
+    if context.target_path.is_some() || context.clone_url.is_some() {
+        let rules = parse_include_if_rules();
+        if !rules.is_empty() {
+            let matching_sources: HashSet<PathBuf> = rules
+                .iter()
+                .filter(|rule| rule.matches(context))
+                .map(|rule| rule.target_path.clone())
+                .collect();
 
-    let rules = parse_include_if_rules();
-    if rules.is_empty() {
-        return profiles;
-    }
+            if !matching_sources.is_empty() {
+                let mut matching = Vec::new();
+                let mut non_matching = Vec::new();
 
-    let matching_sources: HashSet<PathBuf> = rules
-        .iter()
-        .filter(|rule| rule.matches(context))
-        .map(|rule| rule.target_path.clone())
-        .collect();
+                for profile in profiles {
+                    let source_canonical = profile
+                        .source
+                        .canonicalize()
+                        .unwrap_or_else(|_| profile.source.clone());
+                    let matches = matching_sources.iter().any(|rule_target| {
+                        let target_canonical = rule_target
+                            .canonicalize()
+                            .unwrap_or_else(|_| rule_target.clone());
+                        source_canonical == target_canonical
+                    });
 
-    if matching_sources.is_empty() {
-        return profiles;
-    }
+                    if matches {
+                        matching.push(profile);
+                    } else {
+                        non_matching.push(profile);
+                    }
+                }
 
-    let mut matching = Vec::new();
-    let mut non_matching = Vec::new();
-
-    for profile in profiles {
-        let source_canonical = profile.source.canonicalize().unwrap_or_else(|_| profile.source.clone());
-        let matches = matching_sources.iter().any(|rule_target| {
-            let target_canonical = rule_target.canonicalize().unwrap_or_else(|_| rule_target.clone());
-            source_canonical == target_canonical
-        });
-
-        if matches {
-            matching.push(profile);
-        } else {
-            non_matching.push(profile);
+                matching.extend(non_matching);
+                return matching;
+            }
         }
     }
 
-    matching.extend(non_matching);
-    matching
+    promote_default(profiles, default_profile)
+}
+
+/// Promotes the configured default profile to the top of the list.
+fn promote_default(mut profiles: Vec<Profile>, default_name: Option<&str>) -> Vec<Profile> {
+    let Some(name) = default_name else {
+        return profiles;
+    };
+
+    if let Some(idx) = profiles.iter().position(|p| p.name == name) {
+        let default = profiles.remove(idx);
+        profiles.insert(0, default);
+    }
+
+    profiles
 }
 
 /// Interactive profile selection
@@ -557,8 +586,8 @@ fn get_current_git_config(key: &str) -> Option<String> {
         .filter(|s| !s.is_empty())
 }
 
-/// Finds gitconfig files in common locations
-fn find_gitconfig_files() -> Vec<PathBuf> {
+/// Finds gitconfig files in common locations and custom directories
+fn find_gitconfig_files(extra_dirs: &[PathBuf]) -> Vec<PathBuf> {
     let mut files = Vec::new();
 
     if let Some(home) = dirs::home_dir() {
@@ -581,6 +610,17 @@ fn find_gitconfig_files() -> Vec<PathBuf> {
                     && name.ends_with(".gitconfig")
                     && name != "config"
                 {
+                    files.push(path);
+                }
+            }
+        }
+    }
+
+    for dir in extra_dirs {
+        if let Ok(entries) = fs::read_dir(dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_file() {
                     files.push(path);
                 }
             }

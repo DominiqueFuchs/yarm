@@ -86,10 +86,11 @@ yarm completions fish > ~/.config/fish/completions/yarm.fish
 
 ## Profile Discovery
 
-yarm discovers profiles from two sources:
+yarm discovers profiles from three sources:
 
 1. Files known to git (`git config --list --show-origin`)
 2. Additional gitconfig files in `~/.gitconfig-*`, `~/.gitconfig.*`, and `~/.config/git/*.gitconfig`
+3. Custom directories configured in `~/.config/yarm/config.toml` (see [Configuration](#configuration))
 
 | Config File | Profile Name |
 |-------------|--------------|
@@ -114,3 +115,24 @@ yarm respects git's `includeIf` directives. If you have conditional includes in 
 ```
 
 When cloning or initializing a repo under `~/work/`, or cloning from `github.com/mycompany/*`, the `work` profile will be suggested first.
+
+## Configuration
+
+yarm can be configured via `~/.config/yarm/config.toml`.
+
+```toml
+[profiles]
+# Pre-select this profile when no includeIf rule matches
+default = "work"
+
+# Additional directories to scan for gitconfig files
+paths = [
+    "~/custom/gitconfigs",
+    "/shared/team-configs"
+]
+```
+
+| Key | Description |
+|-----|-------------|
+| `profiles.default` | Profile to pre-select when no `-p` flag and no `includeIf` rule applies |
+| `profiles.paths` | Additional directories to scan for gitconfig files |

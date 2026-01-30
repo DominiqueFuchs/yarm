@@ -5,6 +5,7 @@ use std::io;
 use std::path::PathBuf;
 
 mod commands;
+mod config;
 mod git;
 mod profile;
 mod term;
