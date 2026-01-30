@@ -51,6 +51,9 @@ enum Command {
         /// Use named profile instead of interactive selection
         #[arg(short, long)]
         profile: Option<String>,
+        /// Apply to all repositories in a pool
+        #[arg(short = 'P', long)]
+        pool: Option<String>,
     },
 
     /// Manage git identity profiles
@@ -65,7 +68,7 @@ enum Command {
         /// Repository name or path fragment to match
         repo: Option<String>,
         /// Find a repository pool by name instead of a repository
-        #[arg(short, long)]
+        #[arg(short = 'P', long)]
         pool: Option<String>,
     },
 
@@ -113,7 +116,7 @@ ye() {\n\
 _ye_complete() {\n\
   local cur=\"${COMP_WORDS[COMP_CWORD]}\"\n\
   local prev=\"${COMP_WORDS[COMP_CWORD-1]}\"\n\
-  if [[ \"$prev\" == \"--pool\" || \"$prev\" == \"-p\" ]]; then\n\
+  if [[ \"$prev\" == \"--pool\" || \"$prev\" == \"-P\" ]]; then\n\
     COMPREPLY=($(compgen -W \"$(command yarm complete-pool-names 2>/dev/null)\" -- \"$cur\"))\n\
   elif [[ \"$cur\" != -* ]]; then\n\
     COMPREPLY=($(compgen -W \"$(command yarm complete-repo-names 2>/dev/null)\" -- \"$cur\"))\n\
@@ -131,7 +134,7 @@ ye() {\n\
 \n\
 _ye() {\n\
   local -a repos pools\n\
-  if [[ \"${words[CURRENT-1]}\" == \"-p\" || \"${words[CURRENT-1]}\" == \"--pool\" ]]; then\n\
+  if [[ \"${words[CURRENT-1]}\" == \"-P\" || \"${words[CURRENT-1]}\" == \"--pool\" ]]; then\n\
     pools=(${(f)\"$(command yarm complete-pool-names 2>/dev/null)\"})\n\
     compadd -a pools\n\
   else\n\
@@ -151,8 +154,8 @@ function ye\n\
 end\n\
 \n\
 complete -c ye -f\n\
-complete -c ye -s p -l pool -xa '(command yarm complete-pool-names 2>/dev/null)'\n\
-complete -c ye -n 'not __fish_seen_option -p pool' -xa '(command yarm complete-repo-names 2>/dev/null)'\n"
+complete -c ye -s P -l pool -xa '(command yarm complete-pool-names 2>/dev/null)'\n\
+complete -c ye -n 'not __fish_seen_option -P pool' -xa '(command yarm complete-repo-names 2>/dev/null)'\n"
                 .to_string()
         }
         Shell::PowerShell => {
@@ -218,8 +221,12 @@ fn run() -> Result<()> {
         Command::Init { profile } => {
             commands::init::run(profile.as_deref())?;
         }
-        Command::Apply { name, profile } => {
-            commands::apply::run(name.as_deref(), profile.as_deref())?;
+        Command::Apply {
+            name,
+            profile,
+            pool,
+        } => {
+            commands::apply::run(name.as_deref(), profile.as_deref(), pool.as_deref())?;
         }
         Command::Profiles { show } => {
             commands::profiles::run(show)?;

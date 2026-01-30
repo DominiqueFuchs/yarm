@@ -51,9 +51,10 @@ yarm profiles --show     # List all discovered profiles
 All three accept an optional `-p <profile>` flag to skip interactive selection.
 
 ```bash
-yarm clone <url> [path]  # Clone and apply a profile
-yarm init                # git init and apply a profile
-yarm apply [repo]        # Apply a profile to a repository by name
+yarm clone <url> [path]   # Clone and apply a profile
+yarm init                 # git init and apply a profile
+yarm apply [repo]         # Apply a profile to a repository by name
+yarm apply -P <pool>      # Apply a profile to all repos in a pool
 ```
 
 ### Repository Tools
@@ -61,7 +62,7 @@ yarm apply [repo]        # Apply a profile to a repository by name
 ```bash
 yarm scan                # Scan configured pools for git repositories
 yarm find <name>         # Print full path of a repository by name
-yarm find -p <name>      # Print full path of a pool
+yarm find -P <name>      # Print full path of a pool
 yarm stat [repo]         # Show branch, remote, status, size, last fetch
 yarm status              # Show pool overview and scan state
 ```
@@ -110,7 +111,7 @@ The `ye` function uses `yarm find` under the hood to `cd` into a repository by n
 
 ```bash
 ye my-repo       # cd to a repository
-ye -p projects   # cd to a pool directory
+ye -P projects   # cd to a pool directory
 ```
 
 ## Profile Discovery

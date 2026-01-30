@@ -51,6 +51,13 @@ pub fn run(repo: Option<&str>, pool: Option<&str>) -> Result<()> {
 
 /// Finds a repository pool by basename and prints its path.
 fn find_pool(name: &str) -> Result<()> {
+    let path = resolve_pool(name)?;
+    println!("{}", path.display());
+    Ok(())
+}
+
+/// Resolves a pool name to its path.
+pub(crate) fn resolve_pool(name: &str) -> Result<PathBuf> {
     let config = crate::config::load()?;
     let pools = config.pool_paths();
 
@@ -68,6 +75,7 @@ fn find_pool(name: &str) -> Result<()> {
                 .and_then(|n| n.to_str())
                 .is_some_and(|n| n.to_lowercase() == name_lower)
         })
+        .cloned()
         .collect();
 
     match matches.len() {
@@ -77,18 +85,15 @@ fn find_pool(name: &str) -> Result<()> {
             for p in &pools {
                 eprintln!("  {}", format_home_path(p));
             }
-            return Err(SilentExit(1).into());
+            Err(SilentExit(1).into())
         }
-        1 => {
-            println!("{}", matches[0].display());
-            Ok(())
-        }
+        1 => Ok(matches.into_iter().next().unwrap()),
         _ => {
             eprint_warning(format!("Ambiguous pool name '{name}':"));
             for m in &matches {
                 eprintln!("  {}", format_home_path(m));
             }
-            return Err(SilentExit(1).into());
+            Err(SilentExit(1).into())
         }
     }
 }
