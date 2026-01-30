@@ -91,6 +91,33 @@ fn find_pool(name: &str) -> Result<()> {
     }
 }
 
+/// Prints repository basenames for shell completion (one per line).
+pub fn complete_repo_names() -> Result<()> {
+    let state = crate::state::load()?;
+    let mut names: Vec<_> = state
+        .repositories
+        .iter()
+        .filter_map(|r| r.file_name()?.to_str().map(String::from))
+        .collect();
+    names.sort();
+    names.dedup();
+    for name in &names {
+        println!("{name}");
+    }
+    Ok(())
+}
+
+/// Prints pool basenames for shell completion (one per line).
+pub fn complete_pool_names() -> Result<()> {
+    let config = crate::config::load()?;
+    for pool in config.pool_paths() {
+        if let Some(name) = pool.file_name().and_then(|n| n.to_str()) {
+            println!("{name}");
+        }
+    }
+    Ok(())
+}
+
 /// Resolves a name-or-path argument to a repository path.
 /// Tries state-based name lookup first, then filesystem path.
 pub(crate) fn resolve_repo(name_or_path: &str) -> Result<PathBuf> {

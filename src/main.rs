@@ -89,23 +89,77 @@ enum Command {
         #[arg(value_enum)]
         shell: Shell,
     },
+
+    /// Output repository names for shell completion
+    #[command(hide = true)]
+    CompleteRepoNames,
+
+    /// Output pool basenames for shell completion
+    #[command(hide = true)]
+    CompletePoolNames,
 }
 
-fn ye_function(shell: Shell) -> &'static str {
+fn shell_functions(shell: Shell) -> String {
     match shell {
-        Shell::Bash | Shell::Zsh => {
-            "\nye() {\n  local dir\n  dir=\"$(command yarm find \"$@\")\" && cd \"$dir\"\n}\n"
+        Shell::Bash => {
+            "\n\
+ye() {\n\
+  local dir\n\
+  dir=\"$(command yarm find \"$@\")\" && cd \"$dir\"\n\
+}\n\
+\n\
+_ye_complete() {\n\
+  local cur=\"${COMP_WORDS[COMP_CWORD]}\"\n\
+  local prev=\"${COMP_WORDS[COMP_CWORD-1]}\"\n\
+  if [[ \"$prev\" == \"--pool\" || \"$prev\" == \"-p\" ]]; then\n\
+    COMPREPLY=($(compgen -W \"$(command yarm complete-pool-names 2>/dev/null)\" -- \"$cur\"))\n\
+  elif [[ \"$cur\" != -* ]]; then\n\
+    COMPREPLY=($(compgen -W \"$(command yarm complete-repo-names 2>/dev/null)\" -- \"$cur\"))\n\
+  fi\n\
+}\n\
+complete -F _ye_complete ye\n"
+                .to_string()
+        }
+        Shell::Zsh => {
+            "\n\
+ye() {\n\
+  local dir\n\
+  dir=\"$(command yarm find \"$@\")\" && cd \"$dir\"\n\
+}\n\
+\n\
+_ye() {\n\
+  local -a repos pools\n\
+  if [[ \"${words[CURRENT-1]}\" == \"-p\" || \"${words[CURRENT-1]}\" == \"--pool\" ]]; then\n\
+    pools=(${(f)\"$(command yarm complete-pool-names 2>/dev/null)\"})\n\
+    compadd -a pools\n\
+  else\n\
+    repos=(${(f)\"$(command yarm complete-repo-names 2>/dev/null)\"})\n\
+    compadd -a repos\n\
+  fi\n\
+}\n\
+compdef _ye ye\n"
+                .to_string()
         }
         Shell::Fish => {
-            "\nfunction ye\n  set -l dir (command yarm find $argv)\n  and cd $dir\nend\n"
+            "\n\
+function ye\n\
+  set -l dir (command yarm find $argv)\n\
+  and cd $dir\n\
+end\n\
+\n\
+complete -c ye -f\n\
+complete -c ye -s p -l pool -xa '(command yarm complete-pool-names 2>/dev/null)'\n\
+complete -c ye -n 'not __fish_seen_option -p pool' -xa '(command yarm complete-repo-names 2>/dev/null)'\n"
+                .to_string()
         }
         Shell::PowerShell => {
             "\nfunction ye { $d = yarm find @args; if ($LASTEXITCODE -eq 0) { Set-Location $d } }\n"
+                .to_string()
         }
         Shell::Elvish => {
-            "\nfn ye {|@args| var dir = (yarm find $@args); cd $dir }\n"
+            "\nfn ye {|@args| var dir = (yarm find $@args); cd $dir }\n".to_string()
         }
-        _ => "",
+        _ => String::new(),
     }
 }
 
@@ -139,7 +193,13 @@ fn main() -> Result<()> {
         }
         Command::Completions { shell } => {
             generate(shell, &mut Cli::command(), "yarm", &mut io::stdout());
-            print!("{}", ye_function(shell));
+            print!("{}", shell_functions(shell));
+        }
+        Command::CompleteRepoNames => {
+            commands::find::complete_repo_names()?;
+        }
+        Command::CompletePoolNames => {
+            commands::find::complete_pool_names()?;
         }
     }
 

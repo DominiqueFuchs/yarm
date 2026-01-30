@@ -76,7 +76,7 @@ yarm completions bash > /etc/bash_completion.d/yarm
 yarm completions fish > ~/.config/fish/completions/yarm.fish
 ```
 
-The `ye` function uses `yarm find` under the hood to `cd` into a repository by name:
+The `ye` function uses `yarm find` under the hood to `cd` into a repository by name. Tab completion is included for both repository and pool names.
 
 ```bash
 ye my-repo       # cd to a repository
