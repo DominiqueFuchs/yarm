@@ -109,7 +109,7 @@ fn shell_functions(shell: Shell) -> String {
             "\n\
 ye() {\n\
   local dir\n\
-  dir=\"$(command yarm find \"$@\")\" && cd \"$dir\"\n\
+  dir=\"$(command yarm find \"$@\")\" && cd \"$dir\" && printf '  \\033[1;32m✓\\033[0m navigated to %s\\n' \"${dir/#$HOME/~}\" >&2\n\
 }\n\
 \n\
 _ye_complete() {\n\
@@ -128,7 +128,7 @@ complete -F _ye_complete ye\n"
             "\n\
 ye() {\n\
   local dir\n\
-  dir=\"$(command yarm find \"$@\")\" && cd \"$dir\"\n\
+  dir=\"$(command yarm find \"$@\")\" && cd \"$dir\" && printf '  \\033[1;32m✓\\033[0m navigated to %s\\n' \"${dir/#$HOME/~}\" >&2\n\
 }\n\
 \n\
 _ye() {\n\
@@ -149,6 +149,7 @@ compdef _ye ye\n"
 function ye\n\
   set -l dir (command yarm find $argv)\n\
   and cd $dir\n\
+  and printf '  \\033[1;32m✓\\033[0m navigated to %s\\n' (string replace -- $HOME '~' $dir) >&2\n\
 end\n\
 \n\
 complete -c ye -f\n\
@@ -157,11 +158,11 @@ complete -c ye -n 'not __fish_seen_option -p pool' -xa '(command yarm complete-r
                 .to_string()
         }
         Shell::PowerShell => {
-            "\nfunction ye { $d = yarm find @args; if ($LASTEXITCODE -eq 0) { Set-Location $d } }\n"
+            "\nfunction ye { $d = yarm find @args; if ($LASTEXITCODE -eq 0) { Set-Location $d; Write-Host \"  ✓ navigated to $($d -replace [regex]::Escape($HOME), '~')\" -ForegroundColor Green } }\n"
                 .to_string()
         }
         Shell::Elvish => {
-            "\nfn ye {|@args| var dir = (yarm find $@args); cd $dir }\n".to_string()
+            "\nfn ye {|@args| var dir = (yarm find $@args); cd $dir; echo '  ✓ navigated to '(str:replace $E:HOME '~' $dir) >&2 }\n".to_string()
         }
         _ => String::new(),
     }
