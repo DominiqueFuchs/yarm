@@ -8,7 +8,7 @@ readme = "README.md"
 license = "MIT"
 keywords = ["git", "cli", "profile", "repository", "identity"]
 categories = ["command-line-utilities", "development-tools"]
-exclude = [".github/"]
+exclude = [".github/", "examples/"]
 
 [lints.clippy]
 pedantic = "warn"

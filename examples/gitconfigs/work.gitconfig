@@ -1,0 +1,11 @@
+# Work profile - corporate compliance requires signing
+[user]
+    name = John Doe
+    email = john.doe@acme-corp.com
+    signingkey = 7B2E4F8A1C3D9E6B
+
+[commit]
+    gpgsign = true
+
+[tag]
+    gpgsign = true

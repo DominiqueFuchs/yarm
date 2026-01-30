@@ -1,0 +1,11 @@
+# OSS contributor profile - SSH signing for GitHub verified commits
+[user]
+    name = batman1337
+    email = batman@users.noreply.github.com
+    signingkey = ~/.ssh/id_ed25519.pub
+
+[gpg]
+    format = ssh
+
+[commit]
+    gpgsign = true

@@ -1,0 +1,27 @@
+# Example yarm configuration
+# Place at: ~/.config/yarm.toml
+
+[profiles]
+default = "personal"
+
+# Directories containing .gitconfig profile files
+# Each file becomes a named profile (e.g. work.gitconfig -> "work")
+paths = [
+    "~/.config/git"
+]
+
+[repositories]
+# Directory pools to scan for git repositories
+pools = [
+    "~/repos/personal",
+    "~/repos/work"
+]
+
+# Glob patterns for directories to skip during scanning
+exclude = [
+    "**/node_modules",
+    "**/[Bb]uild"
+]
+
+# Automatically rescan pools for new/removed repositories (default: true)
+auto_rescan = true
