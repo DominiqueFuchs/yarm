@@ -24,6 +24,8 @@ pub struct ProfilesConfig {
 pub struct RepositoriesConfig {
     #[serde(default)]
     pub pools: Vec<String>,
+    #[serde(default)]
+    pub exclude: Vec<String>,
 }
 
 impl Config {

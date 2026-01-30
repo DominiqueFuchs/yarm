@@ -76,7 +76,15 @@ yarm apply -p work
 yarm scan
 ```
 
-Recursively walks each directory listed in `repositories.pools` and updates corresponding tracking data.
+Recursively walks each directory listed in `repositories.pools` and updates corresponding tracking data. Directories matching `repositories.exclude` glob patterns are skipped.
+
+Exclude patterns are matched against the **path relative to the pool root**. Use `**/` to match at any depth:
+
+| Pattern | Matches | Does not match |
+|---------|---------|----------------|
+| `[Bb]uild` | `build/`, `Build/` | `foo/build/`, `build-tool/` |
+| `**/[Bb]uild` | `build/`, `foo/build/`, `a/b/Build/` | `build-tool/` |
+| `project/external` | `project/external/` | `external/`, `other/external/` |
 
 ### Status
 
@@ -155,6 +163,11 @@ pools = [
     "~/projects",
     "~/work"
 ]
+
+# Glob patterns for directories to skip during scan (matched against path relative to pool root)
+exclude = [
+    "**/[Bb]uild"
+]
 ```
 
 | Key | Description |
@@ -162,3 +175,4 @@ pools = [
 | `profiles.default` | Profile to pre-select when no `-p` flag and no `includeIf` rule applies |
 | `profiles.paths` | Additional directories to scan for gitconfig files |
 | `repositories.pools` | Directories where repositories are expected to reside |
+| `repositories.exclude` | Glob patterns for directories to skip during `yarm scan` |

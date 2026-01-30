@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 /// Bump this when the state format or scan logic changes in a way that
 /// invalidates previously persisted data. Old state files with a
 /// different version are silently discarded.
-const STATE_VERSION: u32 = 2;
+const STATE_VERSION: u32 = 3;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct StateEnvelope {

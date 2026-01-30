@@ -2,7 +2,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
+use globset::{GlobBuilder, GlobSet, GlobSetBuilder};
 use indicatif::{ProgressBar, ProgressStyle};
 
 use crate::state::State;
@@ -24,6 +25,8 @@ pub fn run() -> Result<()> {
              pools = [\"~/projects\", \"~/work\"]"
         );
     }
+
+    let exclude = build_exclude_set(&config.repositories.exclude)?;
 
     let spinner = ProgressBar::new_spinner();
     spinner.set_style(
@@ -47,7 +50,7 @@ pub fn run() -> Result<()> {
         pool_count += 1;
         spinner.set_message(format!("Scanning {}...", pool.display()));
 
-        let found = scan_directory(pool);
+        let found = scan_directory(pool, &exclude);
         repos.extend(found);
     }
 
@@ -81,9 +84,22 @@ pub fn run() -> Result<()> {
     Ok(())
 }
 
+/// Builds a `GlobSet` from the configured exclude patterns.
+fn build_exclude_set(patterns: &[String]) -> Result<GlobSet> {
+    let mut builder = GlobSetBuilder::new();
+    for pattern in patterns {
+        let glob = GlobBuilder::new(pattern)
+            .literal_separator(true)
+            .build()
+            .with_context(|| format!("Invalid exclude pattern: {pattern}"))?;
+        builder.add(glob);
+    }
+    builder.build().context("Failed to build exclude set")
+}
+
 /// Recursively scans a directory for git repositories.
 /// Returns the paths of directories containing a `.git` subdirectory.
-fn scan_directory(root: &Path) -> Vec<PathBuf> {
+fn scan_directory(root: &Path, exclude: &GlobSet) -> Vec<PathBuf> {
     let mut repos = Vec::new();
     let mut stack = vec![root.to_path_buf()];
 
@@ -112,9 +128,17 @@ fn scan_directory(root: &Path) -> Vec<PathBuf> {
                 continue;
             }
 
-            if !name.starts_with('.') && !SKIP_DIRS.contains(&name) {
-                subdirs.push(path);
+            if name.starts_with('.') || SKIP_DIRS.contains(&name) {
+                continue;
             }
+
+            if let Ok(rel) = path.strip_prefix(root) {
+                if exclude.is_match(rel) {
+                    continue;
+                }
+            }
+
+            subdirs.push(path);
         }
 
         if is_repo {
@@ -132,6 +156,10 @@ mod tests {
     use super::*;
     use std::fs;
 
+    fn empty_exclude() -> GlobSet {
+        GlobSetBuilder::new().build().unwrap()
+    }
+
     #[test]
     fn test_scan_finds_repos() {
         let tmp = tempdir("finds-repos");
@@ -143,7 +171,7 @@ mod tests {
         fs::create_dir_all(repo_b.join(".git")).unwrap();
         fs::create_dir_all(&not_repo).unwrap();
 
-        let mut repos = scan_directory(&tmp);
+        let mut repos = scan_directory(&tmp, &empty_exclude());
         repos.sort();
 
         assert_eq!(repos.len(), 2);
@@ -160,7 +188,7 @@ mod tests {
         fs::create_dir_all(visible.join(".git")).unwrap();
         fs::create_dir_all(hidden.join(".git")).unwrap();
 
-        let repos = scan_directory(&tmp);
+        let repos = scan_directory(&tmp, &empty_exclude());
 
         assert_eq!(repos.len(), 1);
         assert_eq!(repos[0], visible);
@@ -175,7 +203,7 @@ mod tests {
         fs::create_dir_all(real_repo.join(".git")).unwrap();
         fs::create_dir_all(nm_repo.join(".git")).unwrap();
 
-        let repos = scan_directory(&tmp);
+        let repos = scan_directory(&tmp, &empty_exclude());
 
         assert_eq!(repos.len(), 1);
         assert_eq!(repos[0], real_repo);
@@ -189,7 +217,7 @@ mod tests {
 
         fs::create_dir_all(inner.join(".git")).unwrap();
 
-        let repos = scan_directory(&tmp);
+        let repos = scan_directory(&tmp, &empty_exclude());
 
         assert_eq!(repos.len(), 1);
         assert_eq!(repos[0], inner);
@@ -203,7 +231,7 @@ mod tests {
         fs::create_dir_all(&submodule).unwrap();
         fs::write(submodule.join(".git"), "gitdir: ../../.git/modules/sub").unwrap();
 
-        let repos = scan_directory(&tmp);
+        let repos = scan_directory(&tmp, &empty_exclude());
 
         assert_eq!(repos.len(), 1);
         assert_eq!(repos[0], submodule);
@@ -212,8 +240,58 @@ mod tests {
     #[test]
     fn test_scan_empty_directory() {
         let tmp = tempdir("empty");
-        let repos = scan_directory(&tmp);
+        let repos = scan_directory(&tmp, &empty_exclude());
         assert!(repos.is_empty());
+    }
+
+    #[test]
+    fn test_scan_excludes_by_name() {
+        let tmp = tempdir("exclude-name");
+        let kept = tmp.join("kept");
+        let excluded = tmp.join("build-output");
+
+        fs::create_dir_all(kept.join(".git")).unwrap();
+        fs::create_dir_all(excluded.join("nested-repo").join(".git")).unwrap();
+
+        let exclude = build_exclude_set(&["build-output".to_string()]).unwrap();
+        let repos = scan_directory(&tmp, &exclude);
+
+        assert_eq!(repos.len(), 1);
+        assert_eq!(repos[0], kept);
+    }
+
+    #[test]
+    fn test_scan_excludes_by_glob() {
+        let tmp = tempdir("exclude-glob");
+        let kept = tmp.join("my-project");
+        let excluded_a = tmp.join("foo-build");
+        let excluded_b = tmp.join("bar-build");
+
+        fs::create_dir_all(kept.join(".git")).unwrap();
+        fs::create_dir_all(excluded_a.join("repo").join(".git")).unwrap();
+        fs::create_dir_all(excluded_b.join("repo").join(".git")).unwrap();
+
+        let exclude = build_exclude_set(&["*-build".to_string()]).unwrap();
+        let repos = scan_directory(&tmp, &exclude);
+
+        assert_eq!(repos.len(), 1);
+        assert_eq!(repos[0], kept);
+    }
+
+    #[test]
+    fn test_scan_excludes_nested_path() {
+        let tmp = tempdir("exclude-nested");
+        let kept = tmp.join("project").join("src");
+        let excluded = tmp.join("project").join("external");
+
+        fs::create_dir_all(kept.join(".git")).unwrap();
+        fs::create_dir_all(excluded.join("dep").join(".git")).unwrap();
+
+        let exclude = build_exclude_set(&["project/external".to_string()]).unwrap();
+        let repos = scan_directory(&tmp, &exclude);
+
+        assert_eq!(repos.len(), 1);
+        assert_eq!(repos[0], kept);
     }
 
     fn tempdir(name: &str) -> PathBuf {
