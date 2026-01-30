@@ -1,15 +1,19 @@
 use anyhow::Result;
 use std::path::PathBuf;
 
+use crate::commands::find;
 use crate::git;
 use crate::profile::{ProfileContext, apply_profile, resolve_profile_with_context};
 use crate::term::{print_header, print_success};
 
 /// Executes the apply command flow
-pub fn run(path: Option<PathBuf>, profile_name: Option<&str>) -> Result<()> {
+pub fn run(name: Option<&str>, profile_name: Option<&str>) -> Result<()> {
     git::ensure_available()?;
 
-    let target = path.unwrap_or_else(|| PathBuf::from("."));
+    let target = match name {
+        Some(name) => find::resolve_repo(name)?,
+        None => PathBuf::from("."),
+    };
 
     let display_path = target
         .canonicalize()

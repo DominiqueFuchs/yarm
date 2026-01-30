@@ -52,8 +52,8 @@ All three accept an optional `-p <profile>` flag to skip interactive selection.
 
 ```bash
 yarm clone <url> [path]  # Clone and apply a profile
-yarm init [path]         # git init and apply a profile
-yarm apply [path]        # Apply a profile to an existing repo
+yarm init                # git init and apply a profile
+yarm apply [repo]        # Apply a profile to a repository by name
 ```
 
 ### Repository Tools

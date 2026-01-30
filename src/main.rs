@@ -39,8 +39,6 @@ enum Command {
 
     /// Initialize a new repository with profile selection
     Init {
-        /// Directory to initialize (defaults to current directory)
-        path: Option<PathBuf>,
         /// Use named profile instead of interactive selection
         #[arg(short, long)]
         profile: Option<String>,
@@ -48,8 +46,8 @@ enum Command {
 
     /// Apply a profile to an existing repository
     Apply {
-        /// Repository path (defaults to current directory)
-        path: Option<PathBuf>,
+        /// Repository name or path (defaults to current directory)
+        name: Option<String>,
         /// Use named profile instead of interactive selection
         #[arg(short, long)]
         profile: Option<String>,
@@ -217,11 +215,11 @@ fn run() -> Result<()> {
         Command::Clone { url, path, profile } => {
             commands::clone::run(&url, path, profile.as_deref())?;
         }
-        Command::Init { path, profile } => {
-            commands::init::run(path, profile.as_deref())?;
+        Command::Init { profile } => {
+            commands::init::run(profile.as_deref())?;
         }
-        Command::Apply { path, profile } => {
-            commands::apply::run(path, profile.as_deref())?;
+        Command::Apply { name, profile } => {
+            commands::apply::run(name.as_deref(), profile.as_deref())?;
         }
         Command::Profiles { show } => {
             commands::profiles::run(show)?;
