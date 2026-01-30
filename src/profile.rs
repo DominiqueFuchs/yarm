@@ -610,6 +610,49 @@ fn find_gitconfig_files(extra_dirs: &[PathBuf]) -> Vec<PathBuf> {
 }
 
 /// Parses a single gitconfig file using git
+/// Accumulates git config key-value pairs into profile fields.
+#[derive(Default)]
+struct ProfileFields {
+    user_name: Option<String>,
+    user_email: Option<String>,
+    signing_key: Option<String>,
+    gpg_sign: Option<bool>,
+    gpg_format: Option<String>,
+    tag_gpg_sign: Option<bool>,
+}
+
+impl ProfileFields {
+    fn apply(&mut self, key: &str, value: String) {
+        match key {
+            "user.name" => self.user_name = Some(value),
+            "user.email" => self.user_email = Some(value),
+            "user.signingkey" => self.signing_key = Some(value),
+            "commit.gpgsign" => self.gpg_sign = parse_bool(&value),
+            "gpg.format" => self.gpg_format = Some(value),
+            "tag.gpgsign" => self.tag_gpg_sign = parse_bool(&value),
+            _ => {}
+        }
+    }
+
+    fn has_user_config(&self) -> bool {
+        self.user_name.is_some() || self.user_email.is_some()
+    }
+
+    fn into_profile(self, source: PathBuf) -> Profile {
+        let name = derive_profile_name(&source);
+        Profile {
+            name,
+            source,
+            user_name: self.user_name,
+            user_email: self.user_email,
+            signing_key: self.signing_key,
+            gpg_sign: self.gpg_sign,
+            gpg_format: self.gpg_format,
+            tag_gpg_sign: self.tag_gpg_sign,
+        }
+    }
+}
+
 fn parse_gitconfig_file(path: &Path) -> Option<Profile> {
     let output = Command::new("git")
         .args(["config", "--file", &path.to_string_lossy(), "--list"])
@@ -622,44 +665,18 @@ fn parse_gitconfig_file(path: &Path) -> Option<Profile> {
 
     let stdout = String::from_utf8(output.stdout).ok()?;
 
-    let mut user_name = None;
-    let mut user_email = None;
-    let mut signing_key = None;
-    let mut gpg_sign = None;
-    let mut gpg_format = None;
-    let mut tag_gpg_sign = None;
-
+    let mut fields = ProfileFields::default();
     for line in stdout.lines() {
         if let Some((key, value)) = line.split_once('=') {
-            match key {
-                "user.name" => user_name = Some(value.to_string()),
-                "user.email" => user_email = Some(value.to_string()),
-                "user.signingkey" => signing_key = Some(value.to_string()),
-                "commit.gpgsign" => gpg_sign = parse_bool(value),
-                "gpg.format" => gpg_format = Some(value.to_string()),
-                "tag.gpgsign" => tag_gpg_sign = parse_bool(value),
-                _ => {}
-            }
+            fields.apply(key, value.to_string());
         }
     }
 
-    // Skip files without user config
-    if user_name.is_none() && user_email.is_none() {
+    if !fields.has_user_config() {
         return None;
     }
 
-    let name = derive_profile_name(path);
-
-    Some(Profile {
-        name,
-        source: path.to_path_buf(),
-        user_name,
-        user_email,
-        signing_key,
-        gpg_sign,
-        gpg_format,
-        tag_gpg_sign,
-    })
+    Some(fields.into_profile(path.to_path_buf()))
 }
 
 /// Parses the output of `git config --list --show-origin`
@@ -678,42 +695,16 @@ fn parse_git_config_output(output: &str) -> Vec<Profile> {
     let mut profiles = Vec::new();
 
     for (source, entries) in entries_by_file {
-        let mut user_name = None;
-        let mut user_email = None;
-        let mut signing_key = None;
-        let mut gpg_sign = None;
-        let mut gpg_format = None;
-        let mut tag_gpg_sign = None;
-
-        // Last-value-wins for duplicate keys (matches git behavior)
+        let mut fields = ProfileFields::default();
         for (key, value) in entries {
-            match key.as_str() {
-                "user.name" => user_name = Some(value),
-                "user.email" => user_email = Some(value),
-                "user.signingkey" => signing_key = Some(value),
-                "commit.gpgsign" => gpg_sign = parse_bool(&value),
-                "gpg.format" => gpg_format = Some(value),
-                "tag.gpgsign" => tag_gpg_sign = parse_bool(&value),
-                _ => {}
-            }
+            fields.apply(&key, value);
         }
 
-        if user_name.is_none() && user_email.is_none() {
+        if !fields.has_user_config() {
             continue;
         }
 
-        let name = derive_profile_name(&source);
-
-        profiles.push(Profile {
-            name,
-            source,
-            user_name,
-            user_email,
-            signing_key,
-            gpg_sign,
-            gpg_format,
-            tag_gpg_sign,
-        });
+        profiles.push(fields.into_profile(source));
     }
 
     profiles.sort_by(|a, b| a.name.cmp(&b.name));
