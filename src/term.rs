@@ -4,7 +4,7 @@ use std::path::Path;
 use std::time::{Duration, SystemTime};
 
 use anyhow::{Context, Result};
-use console::{style, StyledObject, Term};
+use console::{StyledObject, Term, style};
 use indicatif::{ProgressBar, ProgressStyle};
 use inquire::ui::{RenderConfig, Styled};
 use inquire::{Confirm, InquireError, Select, Text};
@@ -251,7 +251,11 @@ pub struct FilterableSelect<'a> {
 
 impl<'a> FilterableSelect<'a> {
     fn new(message: &'a str, options: Vec<String>, help: &'a str) -> Self {
-        Self { message, options, help }
+        Self {
+            message,
+            options,
+            help,
+        }
     }
 
     /// Shows the prompt and returns the selected option
@@ -270,30 +274,27 @@ impl<'a> FilterableSelect<'a> {
             let mut all_options = options.clone();
             all_options.push(placeholder.clone());
 
-            let scorer = move |input: &str, _opt: &String, string_value: &str, _idx: usize| -> Option<i64> {
-                let input_lower = input.to_lowercase();
-                let is_placeholder = string_value == placeholder_for_scorer;
+            let scorer =
+                move |input: &str, _opt: &String, string_value: &str, _idx: usize| -> Option<i64> {
+                    let input_lower = input.to_lowercase();
+                    let is_placeholder = string_value == placeholder_for_scorer;
 
-                if is_placeholder {
-                    if input.is_empty() {
-                        return None;
-                    }
-                    let any_match = options_for_scorer
-                        .iter()
-                        .any(|opt| opt.to_lowercase().contains(&input_lower));
-                    if any_match {
-                        None
+                    if is_placeholder {
+                        if input.is_empty() {
+                            return None;
+                        }
+                        let any_match = options_for_scorer
+                            .iter()
+                            .any(|opt| opt.to_lowercase().contains(&input_lower));
+                        if any_match { None } else { Some(0) }
                     } else {
-                        Some(0)
+                        if string_value.to_lowercase().contains(&input_lower) {
+                            Some(0)
+                        } else {
+                            None
+                        }
                     }
-                } else {
-                    if string_value.to_lowercase().contains(&input_lower) {
-                        Some(0)
-                    } else {
-                        None
-                    }
-                }
-            };
+                };
 
             match Select::new(self.message, all_options)
                 .with_help_message(self.help)
@@ -317,7 +318,10 @@ impl<'a> FilterableSelect<'a> {
 
 /// Checks if the error is a user cancellation (ESC pressed)
 pub fn is_cancelled(err: &InquireError) -> bool {
-    matches!(err, InquireError::OperationCanceled | InquireError::OperationInterrupted)
+    matches!(
+        err,
+        InquireError::OperationCanceled | InquireError::OperationInterrupted
+    )
 }
 
 /// Prompts for required text input, re-prompting if empty.

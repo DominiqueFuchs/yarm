@@ -2,7 +2,7 @@ use anyhow::Result;
 use std::path::PathBuf;
 
 use crate::git;
-use crate::profile::{apply_profile, resolve_profile_with_context, ProfileContext};
+use crate::profile::{ProfileContext, apply_profile, resolve_profile_with_context};
 use crate::term::{print_header, print_success};
 
 /// Executes the apply command flow
@@ -18,10 +18,7 @@ pub fn run(path: Option<PathBuf>, profile_name: Option<&str>) -> Result<()> {
         .unwrap_or_else(|| target.display().to_string());
 
     if !target.join(".git").exists() {
-        anyhow::bail!(
-            "Not a git repository: {}",
-            target.display()
-        );
+        anyhow::bail!("Not a git repository: {}", target.display());
     }
 
     print_header("Repository:", &display_path);

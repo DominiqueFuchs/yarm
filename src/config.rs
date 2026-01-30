@@ -193,7 +193,10 @@ auto_rescan = false
 
     #[test]
     fn test_expand_tilde_absolute() {
-        assert_eq!(expand_tilde("/absolute/path"), PathBuf::from("/absolute/path"));
+        assert_eq!(
+            expand_tilde("/absolute/path"),
+            PathBuf::from("/absolute/path")
+        );
     }
 
     #[test]

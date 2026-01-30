@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use std::process::{Command, Stdio};
 
 use crate::git;
-use crate::profile::{apply_profile, resolve_profile_with_context, ProfileContext};
+use crate::profile::{ProfileContext, apply_profile, resolve_profile_with_context};
 use crate::term::{print_header, print_success};
 
 /// Executes the init command flow
@@ -12,23 +12,15 @@ pub fn run(path: Option<PathBuf>, profile_name: Option<&str>) -> Result<()> {
 
     let target = path.unwrap_or_else(|| PathBuf::from("."));
 
-    let display_path = target
-        .canonicalize()
-        .unwrap_or_else(|_| target.clone());
+    let display_path = target.canonicalize().unwrap_or_else(|_| target.clone());
 
     let git_dir = target.join(".git");
     if git_dir.exists() {
-        anyhow::bail!(
-            "Already a git repository: {}",
-            display_path.display()
-        );
+        anyhow::bail!("Already a git repository: {}", display_path.display());
     }
 
     if target.as_os_str() != "." && !target.exists() {
-        anyhow::bail!(
-            "Directory does not exist: {}",
-            target.display()
-        );
+        anyhow::bail!("Directory does not exist: {}", target.display());
     }
 
     print_header("Initializing:", display_path.display());
@@ -43,7 +35,10 @@ pub fn run(path: Option<PathBuf>, profile_name: Option<&str>) -> Result<()> {
 
     apply_profile(&target, &selected)?;
 
-    print_success(format!("Initialized repository in {}", display_path.display()));
+    print_success(format!(
+        "Initialized repository in {}",
+        display_path.display()
+    ));
     print_success(format!(
         "Applied profile '{}' ({})",
         selected.name,

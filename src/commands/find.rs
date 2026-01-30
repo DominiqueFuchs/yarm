@@ -1,8 +1,8 @@
 use std::path::{Path, PathBuf};
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 
-use crate::term::{eprint_hint, eprint_warning, format_home_path, SilentExit};
+use crate::term::{SilentExit, eprint_hint, eprint_warning, format_home_path};
 
 /// Executes the find command flow
 pub fn run(repo: Option<&str>, pool: Option<&str>) -> Result<()> {
@@ -37,7 +37,10 @@ pub fn run(repo: Option<&str>, pool: Option<&str>) -> Result<()> {
             Ok(())
         }
         _ => {
-            eprint_warning(format!("Ambiguous match '{repo}', found {} repositories:", matches.len()));
+            eprint_warning(format!(
+                "Ambiguous match '{repo}', found {} repositories:",
+                matches.len()
+            ));
             for m in &matches {
                 eprintln!("  {}", format_home_path(m));
             }
@@ -211,7 +214,6 @@ fn find_suggestion(repos: &[PathBuf], query: &str) -> Option<String> {
         .min_by_key(|(dist, _)| *dist)
         .map(|(_, name)| name)
 }
-
 
 #[cfg(test)]
 mod tests {

@@ -6,7 +6,7 @@ use anyhow::Result;
 use console::style;
 
 use crate::git;
-use crate::term::{format_elapsed, print_header, print_warning, SilentExit};
+use crate::term::{SilentExit, format_elapsed, print_header, print_warning};
 
 /// Executes the stat command flow
 pub fn run(repo: Option<String>) -> Result<()> {

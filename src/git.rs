@@ -1,4 +1,4 @@
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use console::style;
 use std::path::Path;
 use std::process::Command;
@@ -17,11 +17,7 @@ pub fn ensure_available() -> Result<()> {
             "{}\n\n  Install git from https://git-scm.com/downloads",
             style("Git is not installed or not in PATH").red().bold()
         ),
-        Err(e) => bail!(
-            "{}\n\n  {}",
-            style("Failed to run git").red().bold(),
-            e
-        ),
+        Err(e) => bail!("{}\n\n  {}", style("Failed to run git").red().bold(), e),
     }
 }
 
@@ -86,7 +82,13 @@ pub fn set_config(path: &Path, key: &str, value: Option<&str>) -> Result<()> {
 /// Returns the current branch name for the repository at `path`.
 pub fn current_branch(path: &Path) -> Result<String> {
     let output = Command::new("git")
-        .args(["-C", &path.to_string_lossy(), "rev-parse", "--abbrev-ref", "HEAD"])
+        .args([
+            "-C",
+            &path.to_string_lossy(),
+            "rev-parse",
+            "--abbrev-ref",
+            "HEAD",
+        ])
         .output()
         .context("Failed to run git rev-parse")?;
 

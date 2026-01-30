@@ -4,10 +4,10 @@ use std::fmt;
 use std::fs;
 
 use crate::git;
-use crate::profile::{discover_profiles, Profile};
+use crate::profile::{Profile, discover_profiles};
 use crate::term::{
-    format_home_path, is_cancelled, print_success, print_warning, prompt_confirm,
-    prompt_required_text, prompt_text, prompt_text_with_help, MenuLevel, MenuSession,
+    MenuLevel, MenuSession, format_home_path, is_cancelled, print_success, print_warning,
+    prompt_confirm, prompt_required_text, prompt_text, prompt_text_with_help,
 };
 
 /// Menu options for profile management
@@ -80,7 +80,6 @@ fn print_profile(profile: &Profile) {
     println!();
 }
 
-
 /// Interactive menu for managing profiles
 fn interactive_menu() -> Result<()> {
     let mut session = MenuSession::new();
@@ -125,13 +124,19 @@ fn edit_profile() -> Result<()> {
 
     let options: Vec<String> = profiles.iter().map(|p| p.display_option()).collect();
 
-    let selection = match MenuLevel::Sub.select_filterable("Select profile to edit:", options.clone()).prompt() {
+    let selection = match MenuLevel::Sub
+        .select_filterable("Select profile to edit:", options.clone())
+        .prompt()
+    {
         Ok(s) => s,
         Err(e) if is_cancelled(&e) => return Ok(()),
         Err(e) => return Err(e).context("Selection failed"),
     };
 
-    let idx = options.iter().position(|s| s == &selection).expect("selection must be in options");
+    let idx = options
+        .iter()
+        .position(|s| s == &selection)
+        .expect("selection must be in options");
     let profile = &profiles[idx];
 
     println!();
@@ -182,10 +187,12 @@ fn edit_profile() -> Result<()> {
             f => Some(f.to_string()),
         };
 
-        let Some(commit_sign) = prompt_confirm("Sign commits?", profile.gpg_sign.unwrap_or(false))? else {
+        let Some(commit_sign) = prompt_confirm("Sign commits?", profile.gpg_sign.unwrap_or(false))?
+        else {
             return Ok(());
         };
-        let Some(tag_sign) = prompt_confirm("Sign tags?", profile.tag_gpg_sign.unwrap_or(false))? else {
+        let Some(tag_sign) = prompt_confirm("Sign tags?", profile.tag_gpg_sign.unwrap_or(false))?
+        else {
             return Ok(());
         };
         (gpg_format, commit_sign, tag_sign)
@@ -231,18 +238,46 @@ fn edit_profile() -> Result<()> {
     println!();
 
     print_field_diff("Name", old_name.as_deref(), Some(&new_name));
-    print_field_diff("Email", old_email.as_deref(), if new_email.is_empty() { None } else { Some(&new_email) });
-    print_field_diff("Signing key", old_key.as_deref(), if new_key.is_empty() { None } else { Some(&new_key) });
+    print_field_diff(
+        "Email",
+        old_email.as_deref(),
+        if new_email.is_empty() {
+            None
+        } else {
+            Some(&new_email)
+        },
+    );
+    print_field_diff(
+        "Signing key",
+        old_key.as_deref(),
+        if new_key.is_empty() {
+            None
+        } else {
+            Some(&new_key)
+        },
+    );
     print_field_diff("Format", old_format.as_deref(), new_format.as_deref());
     print_field_diff(
         "Sign commits",
-        Some(if old_gpg_sign == Some(true) { "enabled" } else { "disabled" }),
+        Some(if old_gpg_sign == Some(true) {
+            "enabled"
+        } else {
+            "disabled"
+        }),
         Some(if new_gpg_sign { "enabled" } else { "disabled" }),
     );
     print_field_diff(
         "Sign tags",
-        Some(if old_tag_gpg_sign == Some(true) { "enabled" } else { "disabled" }),
-        Some(if new_tag_gpg_sign { "enabled" } else { "disabled" }),
+        Some(if old_tag_gpg_sign == Some(true) {
+            "enabled"
+        } else {
+            "disabled"
+        }),
+        Some(if new_tag_gpg_sign {
+            "enabled"
+        } else {
+            "disabled"
+        }),
     );
     println!();
 
@@ -262,12 +297,7 @@ fn print_field_diff(label: &str, old: Option<&str>, new: Option<&str>) {
             );
         }
         (None, Some(n)) => {
-            println!(
-                "    {}: {} {}",
-                label,
-                style("+").green(),
-                style(n).green()
-            );
+            println!("    {}: {} {}", label, style("+").green(), style(n).green());
         }
         (Some(o), None) => {
             println!(
@@ -285,7 +315,11 @@ fn print_field_diff(label: &str, old: Option<&str>, new: Option<&str>) {
 fn create_profile() -> Result<()> {
     println!();
 
-    let Some(name) = prompt_text_with_help("Profile name:", &MenuLevel::Sub.help_with("e.g., 'work', 'personal', 'oss'"))? else {
+    let Some(name) = prompt_text_with_help(
+        "Profile name:",
+        &MenuLevel::Sub.help_with("e.g., 'work', 'personal', 'oss'"),
+    )?
+    else {
         return Ok(());
     };
 
@@ -303,7 +337,10 @@ fn create_profile() -> Result<()> {
         format!("~/.config/git/{name}.gitconfig"),
     ];
 
-    let location = match MenuLevel::Sub.select("Where to create the profile:", location_options).prompt() {
+    let location = match MenuLevel::Sub
+        .select("Where to create the profile:", location_options)
+        .prompt()
+    {
         Ok(s) => s,
         Err(e) if is_cancelled(&e) => return Ok(()),
         Err(e) => return Err(e).context("Selection failed"),
@@ -425,19 +462,29 @@ fn delete_profile() -> Result<()> {
 
     let options: Vec<String> = deletable.iter().map(|p| p.display_option()).collect();
 
-    let selection = match MenuLevel::Sub.select_filterable("Select profile to delete:", options.clone()).prompt() {
+    let selection = match MenuLevel::Sub
+        .select_filterable("Select profile to delete:", options.clone())
+        .prompt()
+    {
         Ok(s) => s,
         Err(e) if is_cancelled(&e) => return Ok(()),
         Err(e) => return Err(e).context("Selection failed"),
     };
 
-    let idx = options.iter().position(|s| s == &selection).expect("selection must be in options");
+    let idx = options
+        .iter()
+        .position(|s| s == &selection)
+        .expect("selection must be in options");
     let profile = deletable[idx];
 
     println!();
     print_profile(profile);
 
-    let Some(confirmed) = prompt_confirm(&format!("Delete profile '{}' and its config file?", profile.name), false)? else {
+    let Some(confirmed) = prompt_confirm(
+        &format!("Delete profile '{}' and its config file?", profile.name),
+        false,
+    )?
+    else {
         return Ok(());
     };
 

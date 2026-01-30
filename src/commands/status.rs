@@ -99,4 +99,3 @@ fn print_repo_list(repos: &[&std::path::PathBuf], pool: &std::path::Path) {
         println!("        {}", rel.display());
     }
 }
-

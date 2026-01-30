@@ -7,7 +7,7 @@ use std::process::Command;
 
 use crate::config::expand_tilde;
 use crate::git;
-use crate::term::{format_home_path, is_cancelled, MenuLevel};
+use crate::term::{MenuLevel, format_home_path, is_cancelled};
 
 /// Error message when no profiles are found
 pub const NO_PROFILES_ERROR: &str =
@@ -56,7 +56,12 @@ impl IncludeIfRule {
     }
 
     /// Matches gitdir: patterns against the target path
-    fn matches_gitdir(&self, pattern: &str, context: &ProfileContext, case_insensitive: bool) -> bool {
+    fn matches_gitdir(
+        &self,
+        pattern: &str,
+        context: &ProfileContext,
+        case_insensitive: bool,
+    ) -> bool {
         let Some(target) = &context.target_path else {
             return false;
         };
@@ -181,7 +186,8 @@ fn parse_include_if_from_file(path: &Path) -> Vec<IncludeIfRule> {
         } else if line.starts_with('[') {
             current_condition = None;
         } else if let Some(ref condition) = current_condition {
-            if let Some(path_value) = line.strip_prefix("path")
+            if let Some(path_value) = line
+                .strip_prefix("path")
                 .and_then(|s| s.trim_start().strip_prefix('='))
                 .map(|s| s.trim())
             {
@@ -242,20 +248,14 @@ impl Profile {
             label: "Signing format",
             value: v,
         });
-        let gpg_sign = self
-            .gpg_sign
-            .filter(|&v| v)
-            .map(|_| ProfileField {
-                label: "Sign commits",
-                value: "enabled",
-            });
-        let tag_gpg_sign = self
-            .tag_gpg_sign
-            .filter(|&v| v)
-            .map(|_| ProfileField {
-                label: "Sign tags",
-                value: "enabled",
-            });
+        let gpg_sign = self.gpg_sign.filter(|&v| v).map(|_| ProfileField {
+            label: "Sign commits",
+            value: "enabled",
+        });
+        let tag_gpg_sign = self.tag_gpg_sign.filter(|&v| v).map(|_| ProfileField {
+            label: "Sign tags",
+            value: "enabled",
+        });
 
         [name, email, key, gpg_format, gpg_sign, tag_gpg_sign]
             .into_iter()
@@ -302,7 +302,8 @@ pub fn discover_profiles() -> Result<Vec<Profile>> {
         .context("Failed to execute git config")?;
 
     if output.status.success() {
-        let stdout = String::from_utf8(output.stdout).context("Invalid UTF-8 in git config output")?;
+        let stdout =
+            String::from_utf8(output.stdout).context("Invalid UTF-8 in git config output")?;
         for profile in parse_git_config_output(&stdout) {
             seen_sources.insert(profile.source.clone());
             git_profiles.push(profile);
@@ -323,7 +324,9 @@ pub fn discover_profiles() -> Result<Vec<Profile>> {
     additional_profiles.sort_by(|a, b| a.name.cmp(&b.name));
 
     let current_idx = current_email.as_ref().and_then(|email| {
-        git_profiles.iter().position(|p| p.user_email.as_ref() == Some(email))
+        git_profiles
+            .iter()
+            .position(|p| p.user_email.as_ref() == Some(email))
     });
 
     let mut profiles = Vec::new();
@@ -382,11 +385,8 @@ pub fn resolve_profile_with_context(
         anyhow::bail!(NO_PROFILES_ERROR);
     }
 
-    let profiles = reorder_profiles_by_context(
-        profiles,
-        context,
-        config.profiles.default.as_deref(),
-    );
+    let profiles =
+        reorder_profiles_by_context(profiles, context, config.profiles.default.as_deref());
 
     match profile_name {
         Some(name) => find_profile_by_name(&profiles, name).map(Some),
@@ -545,11 +545,19 @@ pub fn apply_profile(repo_path: &Path, profile: &Profile) -> Result<()> {
     }
 
     if let Some(gpg_sign) = profile.gpg_sign {
-        git::set_config(repo_path, "commit.gpgsign", Some(if gpg_sign { "true" } else { "false" }))?;
+        git::set_config(
+            repo_path,
+            "commit.gpgsign",
+            Some(if gpg_sign { "true" } else { "false" }),
+        )?;
     }
 
     if let Some(tag_gpg_sign) = profile.tag_gpg_sign {
-        git::set_config(repo_path, "tag.gpgsign", Some(if tag_gpg_sign { "true" } else { "false" }))?;
+        git::set_config(
+            repo_path,
+            "tag.gpgsign",
+            Some(if tag_gpg_sign { "true" } else { "false" }),
+        )?;
     }
 
     Ok(())

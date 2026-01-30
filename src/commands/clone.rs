@@ -7,7 +7,7 @@ use std::thread;
 use anyhow::{Context, Result};
 
 use crate::git;
-use crate::profile::{apply_profile, resolve_profile_with_context, ProfileContext};
+use crate::profile::{ProfileContext, apply_profile, resolve_profile_with_context};
 use crate::term::{print_header, print_success};
 
 /// Executes the clone command flow
@@ -17,10 +17,7 @@ pub fn run(url: &str, path: Option<PathBuf>, profile_name: Option<&str>) -> Resu
     let target = path.unwrap_or_else(|| derive_target_from_url(url));
 
     if target.exists() {
-        anyhow::bail!(
-            "Target directory '{}' already exists",
-            target.display()
-        );
+        anyhow::bail!("Target directory '{}' already exists", target.display());
     }
 
     print_header("Cloning:", extract_repo_display_name(url));
@@ -152,7 +149,11 @@ fn clone_repo(url: &str, target: &Path) -> Result<()> {
 /// Parses git progress output to extract the current stage and optional percentage
 fn parse_git_progress(line: &str) -> Option<(&str, Option<u8>)> {
     // Strip optional "remote:" prefix, then parse "Stage: NN%" format
-    let line = line.trim().strip_prefix("remote:").unwrap_or(line.trim()).trim();
+    let line = line
+        .trim()
+        .strip_prefix("remote:")
+        .unwrap_or(line.trim())
+        .trim();
 
     let colon_pos = line.find(':')?;
     let stage = line[..colon_pos].trim();

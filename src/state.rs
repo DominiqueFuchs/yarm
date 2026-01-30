@@ -128,8 +128,14 @@ mod tests {
 
         assert_eq!(decoded.version, STATE_VERSION);
         assert_eq!(decoded.state.repositories.len(), 2);
-        assert_eq!(decoded.state.repositories[0], PathBuf::from("/home/user/projects/repo-a"));
-        assert_eq!(decoded.state.repositories[1], PathBuf::from("/home/user/work/repo-b"));
+        assert_eq!(
+            decoded.state.repositories[0],
+            PathBuf::from("/home/user/projects/repo-a")
+        );
+        assert_eq!(
+            decoded.state.repositories[1],
+            PathBuf::from("/home/user/work/repo-b")
+        );
     }
 
     #[test]
