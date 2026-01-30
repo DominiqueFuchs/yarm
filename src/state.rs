@@ -39,6 +39,23 @@ impl State {
     }
 }
 
+/// Checks whether the persisted state file exists and has the current version.
+/// Returns `false` if the file is missing, unreadable, or has a different version.
+pub fn version_matches() -> bool {
+    let Some(path) = state_path() else {
+        return false;
+    };
+
+    let Ok(bytes) = fs::read(&path) else {
+        return false;
+    };
+
+    matches!(
+        bitcode::deserialize::<StateEnvelope>(&bytes),
+        Ok(envelope) if envelope.version == STATE_VERSION
+    )
+}
+
 /// Loads the yarm state from `~/.local/share/yarm/state.bin`.
 /// Returns a default state if the file does not exist, cannot be decoded,
 /// or was written by a different state version.

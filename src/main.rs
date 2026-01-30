@@ -5,6 +5,7 @@ use std::io;
 use std::path::PathBuf;
 use std::process;
 
+use console::style;
 use term::SilentExit;
 
 mod commands;
@@ -176,8 +177,40 @@ fn main() {
     }
 }
 
+fn should_auto_rescan(command: &Command) -> bool {
+    !matches!(
+        command,
+        Command::Scan
+            | Command::Completions { .. }
+            | Command::CompleteRepoNames
+            | Command::CompletePoolNames
+    )
+}
+
+fn try_auto_rescan() -> Result<()> {
+    if state::version_matches() {
+        return Ok(());
+    }
+
+    let config = config::load()?;
+    if !config.repositories.auto_rescan || config.repositories.pools.is_empty() {
+        return Ok(());
+    }
+
+    eprintln!(
+        "  {} {}",
+        style("↻").cyan(),
+        style("State outdated, rescanning...").dim()
+    );
+    commands::scan::run()
+}
+
 fn run() -> Result<()> {
     let cli = Cli::parse();
+
+    if should_auto_rescan(&cli.command) {
+        try_auto_rescan()?;
+    }
 
     match cli.command {
         Command::Clone { url, path, profile } => {

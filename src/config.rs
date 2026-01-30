@@ -20,12 +20,28 @@ pub struct ProfilesConfig {
     pub paths: Vec<String>,
 }
 
-#[derive(Debug, Default, Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct RepositoriesConfig {
     #[serde(default)]
     pub pools: Vec<String>,
     #[serde(default)]
     pub exclude: Vec<String>,
+    #[serde(default = "default_true")]
+    pub auto_rescan: bool,
+}
+
+impl Default for RepositoriesConfig {
+    fn default() -> Self {
+        Self {
+            pools: Vec::new(),
+            exclude: Vec::new(),
+            auto_rescan: true,
+        }
+    }
+}
+
+fn default_true() -> bool {
+    true
 }
 
 impl Config {
@@ -143,6 +159,36 @@ pools = ["~/projects", "/work/repos"]
         assert_eq!(config.repositories.pools.len(), 2);
         let paths = config.pool_paths();
         assert_eq!(paths[1], PathBuf::from("/work/repos"));
+    }
+
+    #[test]
+    fn test_auto_rescan_defaults_true() {
+        let config: Config = toml::from_str("").unwrap();
+        assert!(config.repositories.auto_rescan);
+    }
+
+    #[test]
+    fn test_auto_rescan_defaults_true_with_section() {
+        let config: Config = toml::from_str(
+            r#"
+[repositories]
+pools = ["~/projects"]
+"#,
+        )
+        .unwrap();
+        assert!(config.repositories.auto_rescan);
+    }
+
+    #[test]
+    fn test_auto_rescan_explicit_false() {
+        let config: Config = toml::from_str(
+            r#"
+[repositories]
+auto_rescan = false
+"#,
+        )
+        .unwrap();
+        assert!(!config.repositories.auto_rescan);
     }
 
     #[test]

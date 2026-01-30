@@ -150,3 +150,4 @@ exclude = [
 | `profiles.paths` | Additional directories to scan for gitconfig files |
 | `repositories.pools` | Directories containing git repositories |
 | `repositories.exclude` | Glob patterns for directories to skip during `yarm scan` |
+| `repositories.auto_rescan` | Auto-rescan pools when internal state is outdated (default: `true`) |
