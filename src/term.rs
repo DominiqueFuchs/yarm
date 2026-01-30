@@ -123,6 +123,7 @@ pub fn spinner(message: &str) -> ProgressBar {
 pub struct MenuSession {
     term: Term,
     started: bool,
+    skip_next_clear: bool,
 }
 
 impl MenuSession {
@@ -130,16 +131,25 @@ impl MenuSession {
         Self {
             term: Term::stdout(),
             started: false,
+            skip_next_clear: false,
         }
     }
 
     /// Call before showing each menu prompt.
-    /// Clears the previous menu line if this isn't the first iteration.
+    /// Clears the previous menu line if this isn't the first iteration,
+    /// unless `printed_output` was called after the last prompt.
     pub fn prepare(&mut self) {
-        if self.started {
+        if self.started && !self.skip_next_clear {
             let _ = self.term.clear_last_lines(1);
         }
         self.started = true;
+        self.skip_next_clear = false;
+    }
+
+    /// Call after an action that prints output to the terminal.
+    /// Prevents the next `prepare` from clearing that output.
+    pub fn printed_output(&mut self) {
+        self.skip_next_clear = true;
     }
 }
 

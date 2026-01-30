@@ -4,7 +4,7 @@ use std::fmt;
 use std::fs;
 
 use crate::git;
-use crate::profile::{Profile, discover_profiles};
+use crate::profile::{Profile, discover_profiles, find_profile_by_name};
 use crate::term::{
     MenuLevel, MenuSession, format_home_path, is_cancelled, print_success, print_warning,
     prompt_confirm, prompt_required_text, prompt_text, prompt_text_with_help,
@@ -30,13 +30,88 @@ impl fmt::Display for MenuOption {
     }
 }
 
+/// Menu options when a specific profile is targeted
+#[derive(Clone, Copy)]
+enum ProfileAction {
+    Show,
+    Edit,
+    Delete,
+}
+
+impl fmt::Display for ProfileAction {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Show => write!(f, "Show details"),
+            Self::Edit => write!(f, "Edit profile"),
+            Self::Delete => write!(f, "Delete profile"),
+        }
+    }
+}
+
 /// Main entry point for the profiles command
-pub fn run(show_only: bool) -> Result<()> {
+pub fn run(name: Option<&str>, show_only: bool) -> Result<()> {
+    if let Some(name) = name {
+        let profiles = discover_profiles()?;
+        let profile = find_profile_by_name(&profiles, name)?;
+
+        if show_only {
+            println!();
+            print_profile(&profile);
+            println!();
+            return Ok(());
+        }
+
+        return single_profile_menu(&profile);
+    }
+
     if show_only {
         return show_profiles();
     }
 
     interactive_menu()
+}
+
+/// Interactive menu for a specific named profile
+fn single_profile_menu(profile: &Profile) -> Result<()> {
+    let mut session = MenuSession::new();
+
+    loop {
+        session.prepare();
+
+        let options = vec![ProfileAction::Show, ProfileAction::Edit, ProfileAction::Delete];
+
+        let selection = MenuLevel::Top
+            .select(
+                &format!("Profile '{}':", profile.name),
+                options,
+            )
+            .prompt();
+
+        match selection {
+            Ok(ProfileAction::Show) => {
+                println!();
+                print_profile(profile);
+                println!();
+                session.printed_output();
+            }
+            Ok(ProfileAction::Edit) => {
+                edit_single_profile(profile)?;
+                // Re-discover to reflect changes on next loop iteration
+                let profiles = discover_profiles()?;
+                match find_profile_by_name(&profiles, &profile.name) {
+                    Ok(updated) => return single_profile_menu(&updated),
+                    Err(_) => break,
+                }
+            }
+            Ok(ProfileAction::Delete) => {
+                delete_single_profile(profile)?;
+                break;
+            }
+            Err(_) => break,
+        }
+    }
+
+    Ok(())
 }
 
 /// Lists all discovered profiles (non-interactive)
@@ -57,14 +132,15 @@ fn show_profiles() -> Result<()> {
     ));
     println!();
 
-    for profile in profiles {
-        print_profile(&profile);
+    for profile in &profiles {
+        print_profile(profile);
+        println!();
     }
 
     Ok(())
 }
 
-/// Prints a single profile's details
+/// Prints a single profile's details (no trailing blank line)
 fn print_profile(profile: &Profile) {
     let source_display = format_home_path(&profile.source);
 
@@ -77,7 +153,6 @@ fn print_profile(profile: &Profile) {
     for field in profile.fields() {
         println!("    {}: {}", field.label, field.value);
     }
-    println!();
 }
 
 /// Interactive menu for managing profiles
@@ -99,12 +174,22 @@ fn interactive_menu() -> Result<()> {
         let selection = MenuLevel::Top.select("Manage profiles:", options).prompt();
 
         match selection {
-            Ok(MenuOption::Edit) => edit_profile()?,
-            Ok(MenuOption::Create) => create_profile()?,
-            Ok(MenuOption::Delete) => delete_profile()?,
+            Ok(MenuOption::Edit) => {
+                edit_profile()?;
+                session.printed_output();
+            }
+            Ok(MenuOption::Create) => {
+                create_profile()?;
+                session.printed_output();
+            }
+            Ok(MenuOption::Delete) => {
+                delete_profile()?;
+                session.printed_output();
+            }
             Ok(MenuOption::List) => {
                 println!();
                 show_profiles()?;
+                session.printed_output();
             }
             Err(_) => break,
         }
@@ -113,7 +198,7 @@ fn interactive_menu() -> Result<()> {
     Ok(())
 }
 
-/// Edit an existing profile
+/// Edit an existing profile (with interactive selection)
 fn edit_profile() -> Result<()> {
     let profiles = discover_profiles()?;
 
@@ -139,6 +224,11 @@ fn edit_profile() -> Result<()> {
         .expect("selection must be in options");
     let profile = &profiles[idx];
 
+    edit_single_profile(profile)
+}
+
+/// Edit a known profile
+fn edit_single_profile(profile: &Profile) -> Result<()> {
     println!();
     println!("  Editing: {}", style(&profile.name).bold());
     println!("  Source:  {}", format_home_path(&profile.source));
@@ -433,7 +523,7 @@ fn create_profile() -> Result<()> {
     Ok(())
 }
 
-/// Delete a profile
+/// Delete a profile (with interactive selection)
 fn delete_profile() -> Result<()> {
     let profiles = discover_profiles()?;
 
@@ -445,13 +535,7 @@ fn delete_profile() -> Result<()> {
     // Filter to only show deletable profiles (not system gitconfig)
     let deletable: Vec<_> = profiles
         .iter()
-        .filter(|p| {
-            let path_str = p.source.to_string_lossy();
-            // Don't allow deleting main .gitconfig or system configs
-            !path_str.ends_with("/.gitconfig")
-                && !path_str.contains("/etc/")
-                && !path_str.ends_with("/.git/config")
-        })
+        .filter(|p| is_deletable(p))
         .collect();
 
     if deletable.is_empty() {
@@ -477,6 +561,19 @@ fn delete_profile() -> Result<()> {
         .expect("selection must be in options");
     let profile = deletable[idx];
 
+    delete_single_profile(profile)
+}
+
+/// Delete a known profile
+fn delete_single_profile(profile: &Profile) -> Result<()> {
+    if !is_deletable(profile) {
+        print_warning(format!(
+            "Cannot delete '{}' (system or main gitconfig)",
+            profile.name
+        ));
+        return Ok(());
+    }
+
     println!();
     print_profile(profile);
 
@@ -500,4 +597,12 @@ fn delete_profile() -> Result<()> {
     println!();
 
     Ok(())
+}
+
+/// Checks whether a profile can be deleted (not system/main gitconfig)
+fn is_deletable(profile: &Profile) -> bool {
+    let path_str = profile.source.to_string_lossy();
+    !path_str.ends_with("/.gitconfig")
+        && !path_str.contains("/etc/")
+        && !path_str.ends_with("/.git/config")
 }

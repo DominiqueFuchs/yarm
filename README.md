@@ -43,10 +43,10 @@ Help texts are available for yarm and all of its subcommands with usage instruct
 
 ### Git Profile Management
 
-```bash
-yarm profiles            # Manage profiles interactively
-yarm profiles --show     # List all discovered profiles
-```
+| Command | Description |
+|---------|-------------|
+| `yarm profiles [name]` | Manage profiles interactively, or target a specific profile |
+| `yarm profiles [name] --show` | List all profiles, or print a specific profile's details |
 
 ### Repository Setup
 

@@ -58,7 +58,9 @@ enum Command {
 
     /// Manage git identity profiles
     Profiles {
-        /// List profiles without interactive menu
+        /// Profile name to show, edit, or delete
+        name: Option<String>,
+        /// Print profile details without interactive menu
         #[arg(short, long)]
         show: bool,
     },
@@ -228,8 +230,8 @@ fn run() -> Result<()> {
         } => {
             commands::apply::run(name.as_deref(), profile.as_deref(), pool.as_deref())?;
         }
-        Command::Profiles { show } => {
-            commands::profiles::run(show)?;
+        Command::Profiles { name, show } => {
+            commands::profiles::run(name.as_deref(), show)?;
         }
         Command::Find { repo, pool } => {
             commands::find::run(repo.as_deref(), pool.as_deref())?;
