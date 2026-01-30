@@ -8,6 +8,7 @@ mod commands;
 mod config;
 mod git;
 mod profile;
+mod state;
 mod term;
 
 /// Yet Another Repository Manager
@@ -57,6 +58,16 @@ enum Command {
         show: bool,
     },
 
+    /// Scan repository pools for git repositories
+    Scan,
+
+    /// Show repository pool status
+    Status {
+        /// List all repositories in each pool
+        #[arg(short, long)]
+        full: bool,
+    },
+
     /// Generate shell completions
     Completions {
         /// Shell to generate completions for
@@ -80,6 +91,12 @@ fn main() -> Result<()> {
         }
         Command::Profiles { show } => {
             commands::profiles::run(show)?;
+        }
+        Command::Scan => {
+            commands::scan::run()?;
+        }
+        Command::Status { full } => {
+            commands::status::run(full)?;
         }
         Command::Completions { shell } => {
             generate(shell, &mut Cli::command(), "yarm", &mut io::stdout());

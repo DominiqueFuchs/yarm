@@ -34,6 +34,11 @@ pub fn print_warning(message: impl Display) {
     println!("  {} {}", icon_warning(), message);
 }
 
+/// Prints a dimmed hint message (e.g., "hint: Run yarm scan to discover repositories")
+pub fn print_hint(message: impl Display) {
+    println!("  {} {}", style("hint:").dim(), message);
+}
+
 /// Manages terminal state for interactive menu sessions.
 /// Handles clearing previous menu output between iterations.
 pub struct MenuSession {

@@ -69,6 +69,24 @@ yarm apply ~/projects/existing-repo
 yarm apply -p work
 ```
 
+### Scan
+
+```bash
+# Scan configured repository pools for git repositories
+yarm scan
+```
+
+Recursively walks each directory listed in `repositories.pools` and updates corresponding tracking data.
+
+### Status
+
+```bash
+# Show repository pool status
+yarm status
+```
+
+Displays configured pool directories and the number of scanned repositories in each.
+
 ## Shell Completions
 
 ```bash
@@ -90,7 +108,7 @@ yarm discovers profiles from three sources:
 
 1. Files known to git (`git config --list --show-origin`)
 2. Additional gitconfig files in `~/.gitconfig-*`, `~/.gitconfig.*`, and `~/.config/git/*.gitconfig`
-3. Custom directories configured in `~/.config/yarm/config.toml` (see [Configuration](#configuration))
+3. Custom directories configured in `~/.config/yarm.toml` (see [Configuration](#configuration))
 
 | Config File | Profile Name |
 |-------------|--------------|
@@ -118,7 +136,7 @@ When cloning or initializing a repo under `~/work/`, or cloning from `github.com
 
 ## Configuration
 
-yarm can be configured via `~/.config/yarm/config.toml`.
+yarm can be configured via `~/.config/yarm.toml`.
 
 ```toml
 [profiles]
@@ -130,9 +148,17 @@ paths = [
     "~/custom/gitconfigs",
     "/shared/team-configs"
 ]
+
+[repositories]
+# Directories where repositories are expected to reside
+pools = [
+    "~/projects",
+    "~/work"
+]
 ```
 
 | Key | Description |
 |-----|-------------|
 | `profiles.default` | Profile to pre-select when no `-p` flag and no `includeIf` rule applies |
 | `profiles.paths` | Additional directories to scan for gitconfig files |
+| `repositories.pools` | Directories where repositories are expected to reside |

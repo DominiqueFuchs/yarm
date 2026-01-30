@@ -290,7 +290,7 @@ impl Profile {
 /// This discovers profiles from three sources:
 /// 1. Files git knows about (`git config --list --show-origin`)
 /// 2. Additional `*.gitconfig` files in common locations
-/// 3. Custom directories from yarm configuration (`~/.config/yarm/config.toml`)
+/// 3. Custom directories from yarm configuration (`~/.config/yarm.toml`)
 ///
 /// Profiles are ordered: current effective profile first, then git-known
 /// profiles alphabetically, then additional discovered profiles alphabetically.

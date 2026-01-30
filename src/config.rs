@@ -8,6 +8,8 @@ use serde::Deserialize;
 pub struct Config {
     #[serde(default)]
     pub profiles: ProfilesConfig,
+    #[serde(default)]
+    pub repositories: RepositoriesConfig,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -16,6 +18,12 @@ pub struct ProfilesConfig {
     pub default: Option<String>,
     #[serde(default)]
     pub paths: Vec<String>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+pub struct RepositoriesConfig {
+    #[serde(default)]
+    pub pools: Vec<String>,
 }
 
 impl Config {
@@ -27,9 +35,18 @@ impl Config {
             .map(|p| expand_tilde(p))
             .collect()
     }
+
+    /// Returns the resolved repository pool paths, with `~` expanded.
+    pub fn pool_paths(&self) -> Vec<PathBuf> {
+        self.repositories
+            .pools
+            .iter()
+            .map(|p| expand_tilde(p))
+            .collect()
+    }
 }
 
-/// Loads the yarm configuration from `~/.config/yarm/config.toml`.
+/// Loads the yarm configuration from `~/.config/yarm.toml`.
 /// Returns a default config if the file does not exist.
 pub fn load() -> Result<Config> {
     let Some(config_path) = config_path() else {
@@ -48,7 +65,7 @@ pub fn load() -> Result<Config> {
 
 /// Returns the path to the yarm configuration file.
 fn config_path() -> Option<PathBuf> {
-    dirs::home_dir().map(|h| h.join(".config/yarm/config.toml"))
+    dirs::home_dir().map(|h| h.join(".config/yarm.toml"))
 }
 
 /// Expands a leading `~/` to the user's home directory.
@@ -70,6 +87,7 @@ mod tests {
         let config: Config = toml::from_str("").unwrap();
         assert!(config.profiles.default.is_none());
         assert!(config.profiles.paths.is_empty());
+        assert!(config.repositories.pools.is_empty());
     }
 
     #[test]
@@ -109,6 +127,20 @@ default = "work"
         )
         .unwrap();
         assert_eq!(config.profiles.default.as_deref(), Some("work"));
+    }
+
+    #[test]
+    fn test_config_with_pools() {
+        let config: Config = toml::from_str(
+            r#"
+[repositories]
+pools = ["~/projects", "/work/repos"]
+"#,
+        )
+        .unwrap();
+        assert_eq!(config.repositories.pools.len(), 2);
+        let paths = config.pool_paths();
+        assert_eq!(paths[1], PathBuf::from("/work/repos"));
     }
 
     #[test]
