@@ -173,8 +173,10 @@ fn parse_include_if_from_file(path: &Path) -> Vec<IncludeIfRule> {
     for line in content.lines() {
         let line = line.trim();
 
-        if line.starts_with("[includeIf \"") && line.ends_with("\"]") {
-            let condition = &line[12..line.len() - 2];
+        if let Some(condition) = line
+            .strip_prefix("[includeIf \"")
+            .and_then(|s| s.strip_suffix("\"]"))
+        {
             current_condition = Some(condition.to_string());
         } else if line.starts_with('[') {
             current_condition = None;

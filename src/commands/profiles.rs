@@ -131,7 +131,7 @@ fn edit_profile() -> Result<()> {
         Err(e) => return Err(e).context("Selection failed"),
     };
 
-    let idx = options.iter().position(|s| s == &selection).unwrap();
+    let idx = options.iter().position(|s| s == &selection).expect("selection must be in options");
     let profile = &profiles[idx];
 
     println!();
@@ -431,7 +431,7 @@ fn delete_profile() -> Result<()> {
         Err(e) => return Err(e).context("Selection failed"),
     };
 
-    let idx = options.iter().position(|s| s == &selection).unwrap();
+    let idx = options.iter().position(|s| s == &selection).expect("selection must be in options");
     let profile = deletable[idx];
 
     println!();
