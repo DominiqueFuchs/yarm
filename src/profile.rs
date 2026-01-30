@@ -5,6 +5,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use crate::config::expand_tilde;
 use crate::git;
 use crate::term::{format_home_path, is_cancelled, MenuLevel};
 
@@ -65,8 +66,7 @@ impl IncludeIfRule {
             Err(_) => target.clone(),
         };
 
-        let expanded = expand_tilde(pattern);
-        let pattern_path = PathBuf::from(&expanded);
+        let pattern_path = expand_tilde(pattern);
 
         let pattern_normalized = match pattern_path.canonicalize() {
             Ok(p) => p,
@@ -82,11 +82,11 @@ impl IncludeIfRule {
             (target_str.to_string(), pattern_str.to_string())
         };
 
-        if expanded.ends_with('/') || expanded.ends_with("/**") {
+        if pattern.ends_with('/') || pattern.ends_with("/**") {
             // Directory prefix match
             let prefix = pattern_cmp.trim_end_matches('/').trim_end_matches("**");
             target_cmp.starts_with(&prefix)
-        } else if expanded.contains('*') {
+        } else if pattern.contains('*') {
             // Glob pattern - simple wildcard matching
             glob_match(&pattern_cmp, &target_cmp)
         } else {
@@ -103,16 +103,6 @@ impl IncludeIfRule {
 
         glob_match(pattern, url)
     }
-}
-
-/// Expands ~ to the home directory
-fn expand_tilde(path: &str) -> String {
-    if let Some(rest) = path.strip_prefix("~/") {
-        if let Some(home) = dirs::home_dir() {
-            return format!("{}/{}", home.display(), rest);
-        }
-    }
-    path.to_string()
 }
 
 /// Simple glob matching supporting * and **
@@ -193,10 +183,9 @@ fn parse_include_if_from_file(path: &Path) -> Vec<IncludeIfRule> {
                 .and_then(|s| s.trim_start().strip_prefix('='))
                 .map(|s| s.trim())
             {
-                let target = expand_tilde(path_value);
                 rules.push(IncludeIfRule {
                     condition: condition.clone(),
-                    target_path: PathBuf::from(target),
+                    target_path: expand_tilde(path_value),
                 });
             }
         }
@@ -969,21 +958,6 @@ file:/Users/test/.gitconfig	user.name=Second"#;
     fn test_glob_match_middle() {
         assert!(glob_match("*github*repo*", "https://github.com/user/repo"));
         assert!(!glob_match("*gitlab*repo*", "https://github.com/user/repo"));
-    }
-
-    #[test]
-    fn test_expand_tilde() {
-        let expanded = expand_tilde("~/work");
-        if let Some(home) = dirs::home_dir() {
-            assert!(expanded.starts_with(&home.to_string_lossy().to_string()));
-            assert!(expanded.ends_with("/work"));
-        }
-    }
-
-    #[test]
-    fn test_expand_tilde_no_tilde() {
-        assert_eq!(expand_tilde("/absolute/path"), "/absolute/path");
-        assert_eq!(expand_tilde("relative/path"), "relative/path");
     }
 
     #[test]

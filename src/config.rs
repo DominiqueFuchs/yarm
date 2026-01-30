@@ -71,7 +71,7 @@ fn config_path() -> Option<PathBuf> {
 }
 
 /// Expands a leading `~/` to the user's home directory.
-fn expand_tilde(path: &str) -> PathBuf {
+pub fn expand_tilde(path: &str) -> PathBuf {
     if let Some(rest) = path.strip_prefix("~/") {
         if let Some(home) = dirs::home_dir() {
             return home.join(rest);
