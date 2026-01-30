@@ -1,5 +1,8 @@
 # yarm – Yet Another Repository Manager
 
+[![CI](https://github.com/DominiqueFuchs/yarm/actions/workflows/ci.yml/badge.svg)](https://github.com/DominiqueFuchs/yarm/actions/workflows/ci.yml)
+[![crates.io](https://img.shields.io/crates/v/yarm.svg)](https://crates.io/crates/yarm)
+
 A small workflow utility for managing local git repositories. It handles git identity configuration via profiles and keeps track of repositories across directory pools.
 
 - **Profiles** — create, edit, and apply gitconfig-based identity profiles (`user.name`, `user.email`, GPG settings). Profiles are selected interactively or matched automatically via git's `includeIf` rules.
