@@ -349,29 +349,30 @@ fn edit_single_profile(profile: &Profile) -> Result<()> {
             Some(&new_key)
         },
     );
-    print_field_diff("Format", old_format.as_deref(), new_format.as_deref());
-    print_field_diff(
-        "Sign commits",
-        Some(if old_gpg_sign == Some(true) {
-            "enabled"
+    let has_signing = old_key.is_some() || !new_key.is_empty();
+    if has_signing {
+        let effective_old_format = if old_key.is_some() {
+            Some(old_format.as_deref().unwrap_or("openpgp"))
         } else {
-            "disabled"
-        }),
-        Some(if new_gpg_sign { "enabled" } else { "disabled" }),
-    );
-    print_field_diff(
-        "Sign tags",
-        Some(if old_tag_gpg_sign == Some(true) {
-            "enabled"
+            None
+        };
+        let effective_new_format = if !new_key.is_empty() {
+            Some(new_format.as_deref().unwrap_or("openpgp"))
         } else {
-            "disabled"
-        }),
-        Some(if new_tag_gpg_sign {
-            "enabled"
-        } else {
-            "disabled"
-        }),
-    );
+            None
+        };
+        print_field_diff("Format", effective_old_format, effective_new_format);
+        print_field_diff(
+            "Sign commits",
+            old_key.as_ref().map(|_| if old_gpg_sign == Some(true) { "enabled" } else { "disabled" }),
+            if !new_key.is_empty() { Some(if new_gpg_sign { "enabled" } else { "disabled" }) } else { None },
+        );
+        print_field_diff(
+            "Sign tags",
+            old_key.as_ref().map(|_| if old_tag_gpg_sign == Some(true) { "enabled" } else { "disabled" }),
+            if !new_key.is_empty() { Some(if new_tag_gpg_sign { "enabled" } else { "disabled" }) } else { None },
+        );
+    }
     println!();
 
     Ok(())
