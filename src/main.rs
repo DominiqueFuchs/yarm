@@ -3,6 +3,9 @@ use clap::{CommandFactory, Parser, Subcommand};
 use clap_complete::{generate, Shell};
 use std::io;
 use std::path::PathBuf;
+use std::process;
+
+use term::SilentExit;
 
 mod commands;
 mod config;
@@ -163,7 +166,17 @@ complete -c ye -n 'not __fish_seen_option -p pool' -xa '(command yarm complete-r
     }
 }
 
-fn main() -> Result<()> {
+fn main() {
+    if let Err(e) = run() {
+        if let Some(exit) = e.downcast_ref::<SilentExit>() {
+            process::exit(exit.0);
+        }
+        eprintln!("Error: {e:#}");
+        process::exit(1);
+    }
+}
+
+fn run() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {

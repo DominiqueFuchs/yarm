@@ -1,9 +1,8 @@
 use std::path::{Path, PathBuf};
-use std::process;
 
 use anyhow::{bail, Context, Result};
 
-use crate::term::{eprint_hint, eprint_warning, format_home_path};
+use crate::term::{eprint_hint, eprint_warning, format_home_path, SilentExit};
 
 /// Executes the find command flow
 pub fn run(repo: Option<&str>, pool: Option<&str>) -> Result<()> {
@@ -20,7 +19,7 @@ pub fn run(repo: Option<&str>, pool: Option<&str>) -> Result<()> {
     if state.repositories.is_empty() {
         eprint_warning("No repositories in state");
         eprint_hint("Run `yarm scan` to discover repositories");
-        process::exit(1);
+        return Err(SilentExit(1).into());
     }
 
     let matches = find_matches(&state.repositories, repo);
@@ -31,7 +30,7 @@ pub fn run(repo: Option<&str>, pool: Option<&str>) -> Result<()> {
             if let Some(suggestion) = find_suggestion(&state.repositories, repo) {
                 eprint_hint(format!("Did you mean '{suggestion}'?"));
             }
-            process::exit(1);
+            return Err(SilentExit(1).into());
         }
         1 => {
             println!("{}", matches[0].display());
@@ -42,7 +41,7 @@ pub fn run(repo: Option<&str>, pool: Option<&str>) -> Result<()> {
             for m in &matches {
                 eprintln!("  {}", format_home_path(m));
             }
-            process::exit(1);
+            return Err(SilentExit(1).into());
         }
     }
 }
@@ -55,7 +54,7 @@ fn find_pool(name: &str) -> Result<()> {
     if pools.is_empty() {
         eprint_warning("No repository pools configured");
         eprint_hint("Add pools to ~/.config/yarm.toml");
-        process::exit(1);
+        return Err(SilentExit(1).into());
     }
 
     let name_lower = name.to_lowercase();
@@ -75,7 +74,7 @@ fn find_pool(name: &str) -> Result<()> {
             for p in &pools {
                 eprintln!("  {}", format_home_path(p));
             }
-            process::exit(1);
+            return Err(SilentExit(1).into());
         }
         1 => {
             println!("{}", matches[0].display());
@@ -86,7 +85,7 @@ fn find_pool(name: &str) -> Result<()> {
             for m in &matches {
                 eprintln!("  {}", format_home_path(m));
             }
-            process::exit(1);
+            return Err(SilentExit(1).into());
         }
     }
 }

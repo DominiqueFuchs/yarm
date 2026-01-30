@@ -1,3 +1,4 @@
+use std::fmt;
 use std::fmt::Display;
 use std::path::Path;
 use std::time::{Duration, SystemTime};
@@ -7,6 +8,19 @@ use console::{style, StyledObject, Term};
 use indicatif::{ProgressBar, ProgressStyle};
 use inquire::ui::{RenderConfig, Styled};
 use inquire::{Confirm, InquireError, Select, Text};
+
+/// Error indicating the command already printed its output and wants to exit silently.
+/// Used instead of `process::exit()` to preserve drop semantics and testability.
+#[derive(Debug)]
+pub struct SilentExit(pub i32);
+
+impl fmt::Display for SilentExit {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "exit {}", self.0)
+    }
+}
+
+impl std::error::Error for SilentExit {}
 
 /// Returns a styled success icon (green ✓)
 pub fn icon_success() -> StyledObject<&'static str> {

@@ -1,13 +1,12 @@
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process;
 use std::time::SystemTime;
 
 use anyhow::Result;
 use console::style;
 
 use crate::git;
-use crate::term::{format_elapsed, print_header, print_warning};
+use crate::term::{format_elapsed, print_header, print_warning, SilentExit};
 
 /// Executes the stat command flow
 pub fn run(repo: Option<String>) -> Result<()> {
@@ -81,7 +80,7 @@ fn resolve_target(repo: Option<String>) -> Result<PathBuf> {
             let cwd = std::env::current_dir()?;
             if !cwd.join(".git").exists() {
                 print_warning(format!("Not a git repository: {}", cwd.display()));
-                process::exit(1);
+                return Err(SilentExit(1).into());
             }
             Ok(cwd)
         }
@@ -91,7 +90,7 @@ fn resolve_target(repo: Option<String>) -> Result<PathBuf> {
                 print_warning(format!(
                     "'{name_or_path}' is not a known repository name or a valid git repo path"
                 ));
-                process::exit(1);
+                return Err(SilentExit(1).into());
             }
         },
     }
