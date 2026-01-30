@@ -58,6 +58,7 @@ yarm apply [path]        # Apply a profile to an existing repo
 ```bash
 yarm scan                # Scan configured pools for git repositories
 yarm find <name>         # Print full path of a repository by name
+yarm find -p <name>      # Print full path of a pool
 yarm stat [repo]         # Show branch, remote, status, size, last fetch
 yarm status              # Show pool overview and scan state
 ```
@@ -78,7 +79,8 @@ yarm completions fish > ~/.config/fish/completions/yarm.fish
 The `ye` function uses `yarm find` under the hood to `cd` into a repository by name:
 
 ```bash
-ye my-repo    # cd to the repository
+ye my-repo       # cd to a repository
+ye -p projects   # cd to a pool directory
 ```
 
 ## Profile Discovery

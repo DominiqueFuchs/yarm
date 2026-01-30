@@ -58,10 +58,13 @@ enum Command {
         show: bool,
     },
 
-    /// Print the full path of a scanned repository
+    /// Print the full path of a scanned repository or pool
     Find {
         /// Repository name or path fragment to match
-        repo: String,
+        repo: Option<String>,
+        /// Find a repository pool by name instead of a repository
+        #[arg(short, long)]
+        pool: Option<String>,
     },
 
     /// Show information about a repository
@@ -122,8 +125,8 @@ fn main() -> Result<()> {
         Command::Profiles { show } => {
             commands::profiles::run(show)?;
         }
-        Command::Find { repo } => {
-            commands::find::run(&repo)?;
+        Command::Find { repo, pool } => {
+            commands::find::run(repo.as_deref(), pool.as_deref())?;
         }
         Command::Stat { repo } => {
             commands::stat::run(repo)?;

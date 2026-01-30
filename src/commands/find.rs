@@ -6,7 +6,15 @@ use anyhow::{bail, Context, Result};
 use crate::term::{eprint_hint, eprint_warning, format_home_path};
 
 /// Executes the find command flow
-pub fn run(repo: &str) -> Result<()> {
+pub fn run(repo: Option<&str>, pool: Option<&str>) -> Result<()> {
+    if let Some(name) = pool {
+        return find_pool(name);
+    }
+
+    let Some(repo) = repo else {
+        anyhow::bail!("Provide a repository name or use --pool <name>");
+    };
+
     let state = crate::state::load()?;
 
     if state.repositories.is_empty() {
@@ -31,6 +39,50 @@ pub fn run(repo: &str) -> Result<()> {
         }
         _ => {
             eprint_warning(format!("Ambiguous match '{repo}', found {} repositories:", matches.len()));
+            for m in &matches {
+                eprintln!("  {}", format_home_path(m));
+            }
+            process::exit(1);
+        }
+    }
+}
+
+/// Finds a repository pool by basename and prints its path.
+fn find_pool(name: &str) -> Result<()> {
+    let config = crate::config::load()?;
+    let pools = config.pool_paths();
+
+    if pools.is_empty() {
+        eprint_warning("No repository pools configured");
+        eprint_hint("Add pools to ~/.config/yarm.toml");
+        process::exit(1);
+    }
+
+    let name_lower = name.to_lowercase();
+    let matches: Vec<_> = pools
+        .iter()
+        .filter(|p| {
+            p.file_name()
+                .and_then(|n| n.to_str())
+                .is_some_and(|n| n.to_lowercase() == name_lower)
+        })
+        .collect();
+
+    match matches.len() {
+        0 => {
+            eprint_warning(format!("No pool matching '{name}'"));
+            eprint_hint("Configured pools:");
+            for p in &pools {
+                eprintln!("  {}", format_home_path(p));
+            }
+            process::exit(1);
+        }
+        1 => {
+            println!("{}", matches[0].display());
+            Ok(())
+        }
+        _ => {
+            eprint_warning(format!("Ambiguous pool name '{name}':"));
             for m in &matches {
                 eprintln!("  {}", format_home_path(m));
             }
