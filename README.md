@@ -39,33 +39,35 @@ yarm stat
 
 ## Usage
 
-### Profiles
+Help texts are available for yarm and all of its subcommands with usage instructions and available options. To print help use `yarm <command> --help`. The following sections provide an overview of the different commands and their usage principles.
+
+### Git Profile Management
 
 ```bash
-yarm profiles            # Manage profiles interactively (create, edit, delete)
+yarm profiles            # Manage profiles interactively
 yarm profiles --show     # List all discovered profiles
 ```
 
-### Clone / Init / Apply
+### Repository Setup
 
-All three accept an optional `-p <profile>` flag to skip interactive selection.
+Clone, init, and apply all accept `-p <profile>` to skip interactive selection.
 
-```bash
-yarm clone <url> [path]   # Clone and apply a profile
-yarm init                 # git init and apply a profile
-yarm apply [repo]         # Apply a profile to a repository by name
-yarm apply -P <pool>      # Apply a profile to all repos in a pool
-```
+| Command | Description |
+|---------|-------------|
+| `yarm clone <url> [path]` | Clone and apply a profile |
+| `yarm init` | Initialize repository and apply a profile |
+| `yarm apply [repo]` | Apply a profile to a repository by name (current if omitted) |
+| `yarm apply -P <pool>` | Apply a profile to all repositories in a pool |
 
-### Repository Tools
+### Repository Tracking
 
-```bash
-yarm scan                # Scan configured pools for git repositories
-yarm find <name>         # Print full path of a repository by name
-yarm find -P <name>      # Print full path of a pool
-yarm stat [repo]         # Show branch, remote, status, size, last fetch
-yarm status              # Show pool overview and scan state
-```
+| Command | Description |
+|---------|-------------|
+| `yarm scan` | Scan configured pools for git repositories |
+| `yarm find <name>` | Print full path of a repository by name |
+| `yarm find -P <name>` | Print full path of a pool |
+| `yarm stat [repo]` | Show branch, remote, status, size, last fetch |
+| `yarm status` | Show pool overview and scan state |
 
 `find` matches by basename first (case-insensitive), then by path suffix. Use path fragments to disambiguate: `yarm find work/my-repo`.
 
