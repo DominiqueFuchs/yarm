@@ -70,14 +70,41 @@ yarm status              # Show pool overview and scan state
 
 `stat` accepts a repository name, path, or defaults to the current directory.
 
-### Shell Completions and functions
+### Shell Completions and Functions
+
+Add one of the following to your shell configuration. This loads tab completions for `yarm` and the `ye` jump function:
+
+```sh
+eval "$(yarm completions zsh)"                  # for zsh
+
+eval "$(yarm completions bash)"                 # for bash
+
+yarm completions fish | source                  # for fish
+
+yarm completions powershell | Invoke-Expression # for PS
+
+eval (yarm completions elvish | slurp)          # for elvish
+```
+
+<details>
+<summary>Alternative: file-based installation</summary>
+
+If you prefer file-based completions (e.g. for zsh `compinit` caching), redirect the output to the appropriate path:
 
 ```bash
-# Generate completions (includes the `ye` jump function)
-yarm completions zsh  > ~/.zfunc/_yarm
-yarm completions bash > /etc/bash_completion.d/yarm
+# for zsh
+yarm completions zsh > ~/.zfunc/_yarm
+
+# for bash
+yarm completions bash > ~/.local/share/bash-completion/completions/yarm
+
+# for fish
 yarm completions fish > ~/.config/fish/completions/yarm.fish
 ```
+
+</details>
+
+#### The `ye` Jump Function
 
 The `ye` function uses `yarm find` under the hood to `cd` into a repository by name. Tab completion is included for both repository and pool names.
 
