@@ -83,6 +83,74 @@ pub fn set_config(path: &Path, key: &str, value: Option<&str>) -> Result<()> {
     Ok(())
 }
 
+/// Returns the current branch name for the repository at `path`.
+pub fn current_branch(path: &Path) -> Result<String> {
+    let output = Command::new("git")
+        .args(["-C", &path.to_string_lossy(), "rev-parse", "--abbrev-ref", "HEAD"])
+        .output()
+        .context("Failed to run git rev-parse")?;
+
+    if !output.status.success() {
+        bail!(
+            "{}",
+            format_error(
+                "Failed to get current branch",
+                &String::from_utf8_lossy(&output.stderr)
+            )
+        );
+    }
+
+    Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+}
+
+/// Returns `true` if the working tree has uncommitted changes.
+pub fn is_dirty(path: &Path) -> Result<bool> {
+    let output = Command::new("git")
+        .args(["-C", &path.to_string_lossy(), "status", "--porcelain"])
+        .output()
+        .context("Failed to run git status")?;
+
+    if !output.status.success() {
+        bail!(
+            "{}",
+            format_error(
+                "Failed to check repository status",
+                &String::from_utf8_lossy(&output.stderr)
+            )
+        );
+    }
+
+    Ok(!output.stdout.is_empty())
+}
+
+/// Returns all configured remotes as `(name, url)` pairs.
+pub fn remotes(path: &Path) -> Result<Vec<(String, String)>> {
+    let output = Command::new("git")
+        .args(["-C", &path.to_string_lossy(), "remote", "-v"])
+        .output()
+        .context("Failed to run git remote")?;
+
+    if !output.status.success() {
+        return Ok(Vec::new());
+    }
+
+    let mut seen = Vec::new();
+    for line in String::from_utf8_lossy(&output.stdout).lines() {
+        // Format: "name\turl (fetch|push)"
+        // Only take fetch entries to avoid duplicates
+        if !line.ends_with("(fetch)") {
+            continue;
+        }
+        let Some((name, rest)) = line.split_once('\t') else {
+            continue;
+        };
+        let url = rest.trim_end_matches("(fetch)").trim();
+        seen.push((name.to_string(), url.to_string()));
+    }
+
+    Ok(seen)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

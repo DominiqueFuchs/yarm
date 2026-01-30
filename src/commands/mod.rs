@@ -4,4 +4,5 @@ pub mod find;
 pub mod init;
 pub mod profiles;
 pub mod scan;
+pub mod stat;
 pub mod status;

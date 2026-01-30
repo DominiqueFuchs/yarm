@@ -1,9 +1,7 @@
-use std::time::SystemTime;
-
 use anyhow::Result;
 use console::style;
 
-use crate::term::{print_hint, print_warning};
+use crate::term::{format_elapsed, print_hint, print_warning};
 
 /// Executes the status command flow
 pub fn run(full: bool) -> Result<()> {
@@ -88,33 +86,6 @@ pub fn run(full: bool) -> Result<()> {
     }
 
     Ok(())
-}
-
-fn format_elapsed(time: SystemTime) -> String {
-    let Ok(elapsed) = time.elapsed() else {
-        return "just now".to_string();
-    };
-
-    let secs = elapsed.as_secs();
-    if secs < 60 {
-        return "just now".to_string();
-    }
-
-    let mins = secs / 60;
-    if mins < 60 {
-        let label = if mins == 1 { "minute" } else { "minutes" };
-        return format!("{mins} {label} ago");
-    }
-
-    let hours = mins / 60;
-    if hours < 24 {
-        let label = if hours == 1 { "hour" } else { "hours" };
-        return format!("{hours} {label} ago");
-    }
-
-    let days = hours / 24;
-    let label = if days == 1 { "day" } else { "days" };
-    format!("{days} {label} ago")
 }
 
 fn print_repo_list(repos: &[&std::path::PathBuf], pool: &std::path::Path) {

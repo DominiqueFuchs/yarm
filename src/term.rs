@@ -3,6 +3,7 @@ use console::{style, StyledObject, Term};
 use inquire::ui::{RenderConfig, Styled};
 use inquire::{Confirm, InquireError, Select, Text};
 use std::fmt::Display;
+use std::time::SystemTime;
 
 /// Returns a styled success icon (green ✓)
 pub fn icon_success() -> StyledObject<&'static str> {
@@ -37,6 +38,34 @@ pub fn print_warning(message: impl Display) {
 /// Prints a dimmed hint message (e.g., "hint: Run yarm scan to discover repositories")
 pub fn print_hint(message: impl Display) {
     println!("  {} {}", style("hint:").dim(), message);
+}
+
+/// Formats a `SystemTime` as a human-readable elapsed duration (e.g., "3 hours ago").
+pub fn format_elapsed(time: SystemTime) -> String {
+    let Ok(elapsed) = time.elapsed() else {
+        return "just now".to_string();
+    };
+
+    let secs = elapsed.as_secs();
+    if secs < 60 {
+        return "just now".to_string();
+    }
+
+    let mins = secs / 60;
+    if mins < 60 {
+        let label = if mins == 1 { "minute" } else { "minutes" };
+        return format!("{mins} {label} ago");
+    }
+
+    let hours = mins / 60;
+    if hours < 24 {
+        let label = if hours == 1 { "hour" } else { "hours" };
+        return format!("{hours} {label} ago");
+    }
+
+    let days = hours / 24;
+    let label = if days == 1 { "day" } else { "days" };
+    format!("{days} {label} ago")
 }
 
 /// Prints a warning message to stderr

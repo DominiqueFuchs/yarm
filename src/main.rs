@@ -64,6 +64,12 @@ enum Command {
         repo: String,
     },
 
+    /// Show information about a repository
+    Stat {
+        /// Repository name or path (defaults to current directory)
+        repo: Option<String>,
+    },
+
     /// Scan repository pools for git repositories
     Scan,
 
@@ -118,6 +124,9 @@ fn main() -> Result<()> {
         }
         Command::Find { repo } => {
             commands::find::run(&repo)?;
+        }
+        Command::Stat { repo } => {
+            commands::stat::run(repo)?;
         }
         Command::Scan => {
             commands::scan::run()?;

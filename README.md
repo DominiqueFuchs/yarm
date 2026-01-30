@@ -100,6 +100,21 @@ Matches repository names from the last scan. Tries exact basename match first (c
 
 Designed for use with the `ye` shell function (see [Shell Completions](#shell-completions)).
 
+### Stat
+
+```bash
+# Show info about the current repository
+yarm stat
+
+# Show info about a repository by name
+yarm stat my-repo
+
+# Show info about a repository by path
+yarm stat ~/projects/my-repo
+```
+
+Displays repository information: current branch, remote URL, working tree status, upstream tracking, disk size, and last fetch time. When given a name, resolves it against scanned repositories (like `find`). Defaults to the current directory.
+
 ### Status
 
 ```bash

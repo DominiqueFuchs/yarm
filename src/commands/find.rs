@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 use std::process;
 
-use anyhow::Result;
+use anyhow::{bail, Context, Result};
 
 use crate::term::{eprint_hint, eprint_warning};
 
@@ -37,6 +37,38 @@ pub fn run(repo: &str) -> Result<()> {
             process::exit(1);
         }
     }
+}
+
+/// Resolves a name-or-path argument to a repository path.
+/// Tries state-based name lookup first, then filesystem path.
+pub(crate) fn resolve_repo(name_or_path: &str) -> Result<PathBuf> {
+    let state = crate::state::load()?;
+
+    if !state.repositories.is_empty() {
+        let matches = find_matches(&state.repositories, name_or_path);
+        if matches.len() == 1 {
+            return Ok(matches.into_iter().next().unwrap());
+        }
+    }
+
+    let path = PathBuf::from(name_or_path);
+    let path = if path.is_relative() {
+        std::env::current_dir()
+            .context("Failed to get current directory")?
+            .join(&path)
+    } else {
+        path
+    };
+
+    let path = path
+        .canonicalize()
+        .with_context(|| format!("Path not found: {name_or_path}"))?;
+
+    if path.join(".git").exists() {
+        return Ok(path);
+    }
+
+    bail!("'{name_or_path}' is not a known repository name or a valid git repo path");
 }
 
 /// Finds repositories matching the query.
