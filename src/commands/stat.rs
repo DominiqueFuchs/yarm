@@ -163,9 +163,10 @@ fn format_size(bytes: u64) -> String {
     }
 }
 
+#[allow(clippy::cast_precision_loss)]
 fn format_count(n: u64) -> String {
     if n >= 1_000_000 {
-        format!("{:.1}M", f64::from(u32::try_from(n).unwrap_or(u32::MAX)) / 1_000_000.0)
+        format!("{:.1}M", n as f64 / 1_000_000.0)
     } else if n >= 1_000 {
         format!("{},{:03}", n / 1000, n % 1000)
     } else {
