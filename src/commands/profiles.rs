@@ -150,6 +150,9 @@ fn print_profile(profile: &Profile) {
         style(format!("({source_display})")).dim()
     );
 
+    if let Some(identity) = profile.identity() {
+        println!("    {identity}");
+    }
     for field in profile.fields() {
         println!("    {}: {}", field.label, field.value);
     }

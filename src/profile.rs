@@ -230,16 +230,18 @@ pub struct ProfileField<'a> {
 }
 
 impl Profile {
-    /// Returns an iterator over the profile's fields with their display labels
+    /// Returns the identity as "Name <Email>", "Name", or "<Email>" depending on available fields
+    pub fn identity(&self) -> Option<String> {
+        match (self.user_name.as_deref(), self.user_email.as_deref()) {
+            (Some(name), Some(email)) => Some(format!("{name} <{email}>")),
+            (Some(name), None) => Some(name.to_string()),
+            (None, Some(email)) => Some(format!("<{email}>")),
+            (None, None) => None,
+        }
+    }
+
+    /// Returns an iterator over the profile's non-identity fields
     pub fn fields(&self) -> impl Iterator<Item = ProfileField<'_>> {
-        let name = self.user_name.as_deref().map(|v| ProfileField {
-            label: "Name",
-            value: v,
-        });
-        let email = self.user_email.as_deref().map(|v| ProfileField {
-            label: "Email",
-            value: v,
-        });
         let key = self.signing_key.as_deref().map(|v| ProfileField {
             label: "Signing key",
             value: v,
@@ -257,17 +259,19 @@ impl Profile {
             value: "enabled",
         });
 
-        [name, email, key, gpg_format, gpg_sign, tag_gpg_sign]
+        [key, gpg_format, gpg_sign, tag_gpg_sign]
             .into_iter()
             .flatten()
     }
 
     /// Returns a display string showing the config values that were applied
     pub fn config_summary(&self) -> String {
-        self.fields()
-            .map(|f| format!("{}: {}", f.label, f.value))
-            .collect::<Vec<_>>()
-            .join(", ")
+        let mut parts: Vec<String> = Vec::new();
+        if let Some(identity) = self.identity() {
+            parts.push(identity);
+        }
+        parts.extend(self.fields().map(|f| format!("{}: {}", f.label, f.value)));
+        parts.join(", ")
     }
 
     /// Returns a display string for menu selection: "name (~/path/to/source)"
@@ -912,7 +916,7 @@ file:/Users/test/.gitconfig	user.name=Second"#;
 
         assert_eq!(
             profile.config_summary(),
-            "Name: John Doe, Email: john@example.com, Sign commits: enabled"
+            "John Doe <john@example.com>, Sign commits: enabled"
         );
     }
 
@@ -931,7 +935,7 @@ file:/Users/test/.gitconfig	user.name=Second"#;
 
         assert_eq!(
             profile.config_summary(),
-            "Name: Jane Doe, Email: jane@example.com, Signing key: ABC123, Signing format: ssh, Sign tags: enabled"
+            "Jane Doe <jane@example.com>, Signing key: ABC123, Signing format: ssh, Sign tags: enabled"
         );
     }
 
