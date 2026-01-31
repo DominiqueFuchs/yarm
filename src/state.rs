@@ -1,5 +1,5 @@
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use anyhow::{Context, Result};
@@ -97,6 +97,18 @@ pub fn save(state: &State) -> Result<()> {
     };
     let bytes = bitcode::serialize(&envelope).context("Failed to encode yarm state")?;
     fs::write(&path, bytes).context("Failed to write yarm state file")
+}
+
+/// Adds a repository path to the state if not already present.
+pub fn register_repo(path: &Path) -> Result<()> {
+    let mut state = load()?;
+    let canonical = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
+    if !state.repositories.contains(&canonical) {
+        state.repositories.push(canonical);
+        state.repositories.sort();
+        save(&state)?;
+    }
+    Ok(())
 }
 
 /// Returns the path to the yarm state file.

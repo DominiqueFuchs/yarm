@@ -1,5 +1,5 @@
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
 use serde::Deserialize;
@@ -84,6 +84,15 @@ pub fn load() -> Result<Config> {
 /// Returns the path to the yarm configuration file.
 fn config_path() -> Option<PathBuf> {
     dirs::home_dir().map(|h| h.join(".config/yarm.toml"))
+}
+
+/// Checks whether a path is inside one of the configured repository pools.
+pub fn is_in_pool(path: &Path, pools: &[PathBuf]) -> bool {
+    let canonical = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
+    pools.iter().any(|pool| {
+        let canonical_pool = pool.canonicalize().unwrap_or_else(|_| pool.to_path_buf());
+        canonical.starts_with(&canonical_pool)
+    })
 }
 
 /// Expands a leading `~/` to the user's home directory.
@@ -197,6 +206,39 @@ auto_rescan = false
             expand_tilde("/absolute/path"),
             PathBuf::from("/absolute/path")
         );
+    }
+
+    fn tempdir(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("yarm-test-{name}"));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    #[test]
+    fn test_is_in_pool_inside() {
+        let pool = tempdir("pool-inside");
+        let repo = pool.join("my-repo");
+        std::fs::create_dir_all(&repo).unwrap();
+        assert!(is_in_pool(&repo, &[pool]));
+    }
+
+    #[test]
+    fn test_is_in_pool_outside() {
+        let pool = tempdir("pool-outside");
+        let repo = tempdir("repo-outside");
+        assert!(!is_in_pool(&repo, &[pool]));
+    }
+
+    #[test]
+    fn test_is_in_pool_multiple_pools() {
+        let pool_a = tempdir("pool-multi-a");
+        let pool_b = tempdir("pool-multi-b");
+        let repo = pool_b.join("repo");
+        std::fs::create_dir_all(&repo).unwrap();
+        let pools = vec![pool_a.clone(), pool_b];
+        assert!(is_in_pool(&repo, &pools));
+        assert!(!is_in_pool(&tempdir("repo-multi-outside"), &pools));
     }
 
     #[test]

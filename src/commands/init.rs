@@ -30,6 +30,11 @@ pub fn run(profile_name: Option<&str>) -> Result<()> {
 
     apply_profile(&target, &selected)?;
 
+    let config = crate::config::load()?;
+    if crate::config::is_in_pool(&display_path, &config.pool_paths()) {
+        crate::state::register_repo(&display_path)?;
+    }
+
     print_success(format!(
         "Initialized repository in {}",
         display_path.display()

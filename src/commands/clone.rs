@@ -32,6 +32,11 @@ pub fn run(url: &str, path: Option<PathBuf>, profile_name: Option<&str>) -> Resu
 
     apply_profile(&target, &selected)?;
 
+    let config = crate::config::load()?;
+    if crate::config::is_in_pool(&target, &config.pool_paths()) {
+        crate::state::register_repo(&target)?;
+    }
+
     print_success(format!("Cloned to {}", target.display()));
     print_success(format!(
         "Applied profile '{}' ({})",
