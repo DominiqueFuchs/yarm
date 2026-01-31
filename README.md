@@ -21,22 +21,6 @@ cargo install --path .
 
 Recommended: install [shell completions](#shell-completions-and-functions) for tab completion and the `ye` jump function.
 
-## Getting Started
-
-```bash
-# 1. Clone a repo with interactive profile selection
-yarm clone https://github.com/dominiquefuchs/yarm.git
-
-# 2. Scan repository pools (edit ~/.config/yarm.toml — see Configuration below)
-yarm scan
-
-# 3. Jump to a repository (uses the `ye` shell function from completions)
-ye my-repo
-
-# 4. Check on the current repository
-yarm stat
-```
-
 ## Usage
 
 Help texts are available for yarm and all of its subcommands with usage instructions and available options. To print help use `yarm <command> --help`. The following sections provide an overview of the different commands and their usage principles.
@@ -48,9 +32,11 @@ Help texts are available for yarm and all of its subcommands with usage instruct
 | `yarm profiles [name]` | Manage profiles interactively, or target a specific profile |
 | `yarm profiles [name] --show` | List all profiles, or print a specific profile's details |
 
-### Repository Setup
+![animated terminal profile management demonstration](https://raw.githubusercontent.com/DominiqueFuchs/yarm/main/.github/demo_profiles.gif)
 
-Clone, init, and apply all accept `-p <profile>` to skip interactive selection.
+### Repository Setup, Info and Statistics
+
+Clone, init, and apply all accept `-p <profile>` to skip interactive selection. Show repository info and statistics with `stat`.
 
 | Command | Description |
 |---------|-------------|
@@ -58,20 +44,25 @@ Clone, init, and apply all accept `-p <profile>` to skip interactive selection.
 | `yarm init` | Initialize repository and apply a profile |
 | `yarm apply [repo]` | Apply a profile to a repository by name (current if omitted) |
 | `yarm apply -P <pool>` | Apply a profile to all repositories in a pool |
+| `yarm stat [repo]` | Show branch, remote, status, size, last fetch |
 
-### Repository Tracking
+![animated terminal repository setup demonstration](https://raw.githubusercontent.com/DominiqueFuchs/yarm/main/.github/demo_repositories.gif)
+
+### Repository Tracking and Navigation
 
 | Command | Description |
 |---------|-------------|
 | `yarm scan` | Scan configured pools for git repositories |
 | `yarm find <name>` | Print full path of a repository by name |
 | `yarm find -P <name>` | Print full path of a pool |
-| `yarm stat [repo]` | Show branch, remote, status, size, last fetch |
 | `yarm status` | Show pool overview and scan state |
+| `ye <name>` | Navigate into an existing pool repository (see [shell completions](#shell-completions-and-functions))|
 
 `find` matches by basename first (case-insensitive), then by path suffix. Use path fragments to disambiguate: `yarm find work/my-repo`.
 
 `stat` accepts a repository name, path, or defaults to the current directory.
+
+![animated terminal profile management demonstration](https://raw.githubusercontent.com/DominiqueFuchs/yarm/main/.github/demo_navigate.gif)
 
 ### Shell Completions and Functions
 
