@@ -387,7 +387,7 @@ fn print_field_diff(label: &str, old: Option<&str>, new: Option<&str>) {
             println!(
                 "    {}: {} {} {}",
                 label,
-                style(o).red().dim(),
+                style(o).red(),
                 style("→").dim(),
                 style(n).green()
             );
@@ -400,7 +400,7 @@ fn print_field_diff(label: &str, old: Option<&str>, new: Option<&str>) {
                 "    {}: {} {}",
                 label,
                 style("-").red(),
-                style(o).red().dim()
+                style(o).red()
             );
         }
         _ => {} // No change
