@@ -252,13 +252,13 @@ impl Profile {
             label: "Signing format",
             value: v,
         });
-        let gpg_sign = self.gpg_sign.filter(|&v| v).map(|_| ProfileField {
+        let gpg_sign = self.gpg_sign.map(|v| ProfileField {
             label: "Sign commits",
-            value: "enabled",
+            value: if v { "enabled" } else { "disabled" },
         });
-        let tag_gpg_sign = self.tag_gpg_sign.filter(|&v| v).map(|_| ProfileField {
+        let tag_gpg_sign = self.tag_gpg_sign.map(|v| ProfileField {
             label: "Sign tags",
-            value: "enabled",
+            value: if v { "enabled" } else { "disabled" },
         });
 
         [key, gpg_format, gpg_sign, tag_gpg_sign]
@@ -946,7 +946,7 @@ file:/Users/test/.gitconfig	user.name=Second"#;
 
         assert_eq!(
             profile.config_summary(),
-            "Jane Doe <jane@example.com>, Signing key: ABC123, Signing format: ssh, Sign tags: enabled"
+            "Jane Doe <jane@example.com>, Signing key: ABC123, Signing format: ssh, Sign commits: disabled, Sign tags: enabled"
         );
     }
 

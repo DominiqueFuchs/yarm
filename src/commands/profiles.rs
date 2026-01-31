@@ -158,7 +158,7 @@ fn print_profile(profile: &Profile) {
         println!("    {identity}");
     }
     for field in profile.fields() {
-        println!("    {}: {}", field.label, field.value);
+        println!("    {:<16}{}", field.label, field.value);
     }
 }
 
