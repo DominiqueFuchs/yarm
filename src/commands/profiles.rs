@@ -57,7 +57,6 @@ pub fn run(name: Option<&str>, show_only: bool) -> Result<()> {
         if show_only {
             println!();
             print_profile(&profile);
-            println!();
             return Ok(());
         }
 
@@ -127,9 +126,11 @@ fn show_profiles() -> Result<()> {
     ));
     println!();
 
-    for profile in &profiles {
+    for (i, profile) in profiles.iter().enumerate() {
+        if i > 0 {
+            println!();
+        }
         print_profile(profile);
-        println!();
     }
 
     Ok(())

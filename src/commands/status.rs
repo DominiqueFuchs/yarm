@@ -9,6 +9,8 @@ pub fn run(full: bool) -> Result<()> {
     let pools = config.pool_paths();
     let state = crate::state::load()?;
 
+    println!();
+
     if pools.is_empty() {
         print_warning("No repository pools configured");
         println!();

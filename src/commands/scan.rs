@@ -62,6 +62,7 @@ pub fn run() -> Result<()> {
     state.mark_scanned();
     crate::state::save(&state)?;
 
+    println!();
     let repo_label = if repos.len() == 1 {
         "repository"
     } else {

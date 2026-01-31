@@ -112,7 +112,11 @@ fn shell_functions(shell: Shell) -> String {
             "\n\
 ye() {\n\
   local dir\n\
-  dir=\"$(command yarm find \"$@\")\" && cd \"$dir\" && printf '  \\033[1;32m✓\\033[0m navigated to %s\\n' \"${dir/#$HOME/~}\" >&2\n\
+  echo >&2\n\
+  if dir=\"$(command yarm find \"$@\")\" && cd \"$dir\"; then\n\
+    printf '  \\033[1;32m✓\\033[0m navigated to %s\\n' \"${dir/#$HOME/~}\" >&2\n\
+  fi\n\
+  echo >&2\n\
 }\n\
 \n\
 _ye_complete() {\n\
@@ -131,7 +135,11 @@ complete -F _ye_complete ye\n"
             "\n\
 ye() {\n\
   local dir\n\
-  dir=\"$(command yarm find \"$@\")\" && cd \"$dir\" && printf '  \\033[1;32m✓\\033[0m navigated to %s\\n' \"${dir/#$HOME/~}\" >&2\n\
+  echo >&2\n\
+  if dir=\"$(command yarm find \"$@\")\" && cd \"$dir\"; then\n\
+    printf '  \\033[1;32m✓\\033[0m navigated to %s\\n' \"${dir/#$HOME/~}\" >&2\n\
+  fi\n\
+  echo >&2\n\
 }\n\
 \n\
 _ye() {\n\
@@ -150,9 +158,11 @@ compdef _ye ye\n"
         Shell::Fish => {
             "\n\
 function ye\n\
+  echo >&2\n\
   set -l dir (command yarm find $argv)\n\
   and cd $dir\n\
   and printf '  \\033[1;32m✓\\033[0m navigated to %s\\n' (string replace -- $HOME '~' $dir) >&2\n\
+  echo >&2\n\
 end\n\
 \n\
 complete -c ye -f\n\
@@ -161,11 +171,11 @@ complete -c ye -n 'not __fish_seen_option -P pool' -xa '(command yarm complete-r
                 .to_string()
         }
         Shell::PowerShell => {
-            "\nfunction ye { $d = yarm find @args; if ($LASTEXITCODE -eq 0) { Set-Location $d; Write-Host \"  ✓ navigated to $($d -replace [regex]::Escape($HOME), '~')\" -ForegroundColor Green } }\n"
+            "\nfunction ye { Write-Host; $d = yarm find @args; if ($LASTEXITCODE -eq 0) { Set-Location $d; Write-Host \"  ✓ navigated to $($d -replace [regex]::Escape($HOME), '~')\" -ForegroundColor Green }; Write-Host }\n"
                 .to_string()
         }
         Shell::Elvish => {
-            "\nfn ye {|@args| var dir = (yarm find $@args); cd $dir; echo '  ✓ navigated to '(str:replace $E:HOME '~' $dir) >&2 }\n".to_string()
+            "\nfn ye {|@args| echo >&2; var dir = (yarm find $@args); cd $dir; echo '  ✓ navigated to '(str:replace $E:HOME '~' $dir) >&2; echo >&2 }\n".to_string()
         }
         _ => String::new(),
     }
@@ -219,9 +229,11 @@ fn run() -> Result<()> {
     match cli.command {
         Command::Clone { url, path, profile } => {
             commands::clone::run(&url, path, profile.as_deref())?;
+            println!();
         }
         Command::Init { profile } => {
             commands::init::run(profile.as_deref())?;
+            println!();
         }
         Command::Apply {
             name,
@@ -229,21 +241,26 @@ fn run() -> Result<()> {
             pool,
         } => {
             commands::apply::run(name.as_deref(), profile.as_deref(), pool.as_deref())?;
+            println!();
         }
         Command::Profiles { name, show } => {
             commands::profiles::run(name.as_deref(), show)?;
+            println!();
         }
         Command::Find { repo, pool } => {
             commands::find::run(repo.as_deref(), pool.as_deref())?;
         }
         Command::Stat { repo } => {
             commands::stat::run(repo)?;
+            println!();
         }
         Command::Scan => {
             commands::scan::run()?;
+            println!();
         }
         Command::Status { full } => {
             commands::status::run(full)?;
+            println!();
         }
         Command::Completions { shell } => {
             generate(shell, &mut Cli::command(), "yarm", &mut io::stdout());
