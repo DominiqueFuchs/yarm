@@ -77,13 +77,14 @@ fn single_profile_menu(profile: &Profile) -> Result<()> {
     loop {
         session.prepare();
 
-        let options = vec![ProfileAction::Show, ProfileAction::Edit, ProfileAction::Delete];
+        let options = vec![
+            ProfileAction::Show,
+            ProfileAction::Edit,
+            ProfileAction::Delete,
+        ];
 
         let selection = MenuLevel::Top
-            .select(
-                &format!("Profile '{}':", profile.name),
-                options,
-            )
+            .select(&format!("Profile '{}':", profile.name), options)
             .prompt();
 
         match selection {
@@ -368,13 +369,37 @@ fn edit_single_profile(profile: &Profile) -> Result<()> {
         print_field_diff("Format", effective_old_format, effective_new_format);
         print_field_diff(
             "Sign commits",
-            old_key.as_ref().map(|_| if old_gpg_sign == Some(true) { "enabled" } else { "disabled" }),
-            if !new_key.is_empty() { Some(if new_gpg_sign { "enabled" } else { "disabled" }) } else { None },
+            old_key.as_ref().map(|_| {
+                if old_gpg_sign == Some(true) {
+                    "enabled"
+                } else {
+                    "disabled"
+                }
+            }),
+            if !new_key.is_empty() {
+                Some(if new_gpg_sign { "enabled" } else { "disabled" })
+            } else {
+                None
+            },
         );
         print_field_diff(
             "Sign tags",
-            old_key.as_ref().map(|_| if old_tag_gpg_sign == Some(true) { "enabled" } else { "disabled" }),
-            if !new_key.is_empty() { Some(if new_tag_gpg_sign { "enabled" } else { "disabled" }) } else { None },
+            old_key.as_ref().map(|_| {
+                if old_tag_gpg_sign == Some(true) {
+                    "enabled"
+                } else {
+                    "disabled"
+                }
+            }),
+            if !new_key.is_empty() {
+                Some(if new_tag_gpg_sign {
+                    "enabled"
+                } else {
+                    "disabled"
+                })
+            } else {
+                None
+            },
         );
     }
 
@@ -397,12 +422,7 @@ fn print_field_diff(label: &str, old: Option<&str>, new: Option<&str>) {
             println!("    {}: {} {}", label, style("+").green(), style(n).green());
         }
         (Some(o), None) => {
-            println!(
-                "    {}: {} {}",
-                label,
-                style("-").red(),
-                style(o).red()
-            );
+            println!("    {}: {} {}", label, style("-").red(), style(o).red());
         }
         _ => {} // No change
     }
@@ -539,10 +559,7 @@ fn delete_profile() -> Result<()> {
     }
 
     // Filter to only show deletable profiles (not system gitconfig)
-    let deletable: Vec<_> = profiles
-        .iter()
-        .filter(|p| is_deletable(p))
-        .collect();
+    let deletable: Vec<_> = profiles.iter().filter(|p| is_deletable(p)).collect();
 
     if deletable.is_empty() {
         print_warning("No deletable profiles found");

@@ -196,8 +196,7 @@ impl MenuLevel {
         options: Vec<T>,
         default_idx: usize,
     ) -> SimpleSelect<'a, T> {
-        let config = RenderConfig::default()
-            .with_prompt_prefix(Styled::new("── "));
+        let config = RenderConfig::default().with_prompt_prefix(Styled::new("── "));
 
         let select = Select::new(message, options)
             .with_help_message(self.help())

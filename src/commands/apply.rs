@@ -64,9 +64,7 @@ fn run_pool(pool_name: &str, profile_name: Option<&str>) -> Result<()> {
         .collect();
 
     if repos.is_empty() {
-        print_warning(format!(
-            "No repositories found in pool '{pool_name}'"
-        ));
+        print_warning(format!("No repositories found in pool '{pool_name}'"));
         return Ok(());
     }
 
