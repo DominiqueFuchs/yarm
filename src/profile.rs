@@ -221,6 +221,8 @@ pub struct Profile {
     pub gpg_format: Option<String>,
     /// Git tag.gpgsign value
     pub tag_gpg_sign: Option<bool>,
+    /// Whether this profile is the configured yarm default
+    pub is_default: bool,
 }
 
 /// A profile field with its display label and value
@@ -342,6 +344,12 @@ pub fn discover_profiles() -> Result<Vec<Profile>> {
 
     profiles.extend(git_profiles);
     profiles.extend(additional_profiles);
+
+    if let Some(default_name) = config.profiles.default.as_deref() {
+        if let Some(p) = profiles.iter_mut().find(|p| p.name == default_name) {
+            p.is_default = true;
+        }
+    }
 
     Ok(profiles)
 }
@@ -663,6 +671,7 @@ impl ProfileFields {
             gpg_sign: self.gpg_sign,
             gpg_format: self.gpg_format,
             tag_gpg_sign: self.tag_gpg_sign,
+            is_default: false,
         }
     }
 }
@@ -912,6 +921,7 @@ file:/Users/test/.gitconfig	user.name=Second"#;
             gpg_sign: Some(true),
             gpg_format: None,
             tag_gpg_sign: None,
+            is_default: false,
         };
 
         assert_eq!(
@@ -931,6 +941,7 @@ file:/Users/test/.gitconfig	user.name=Second"#;
             gpg_sign: Some(false),
             gpg_format: Some("ssh".to_string()),
             tag_gpg_sign: Some(true),
+            is_default: false,
         };
 
         assert_eq!(

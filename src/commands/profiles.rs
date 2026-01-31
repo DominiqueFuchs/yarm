@@ -139,11 +139,20 @@ fn show_profiles() -> Result<()> {
 fn print_profile(profile: &Profile) {
     let source_display = format_home_path(&profile.source);
 
-    println!(
-        "  {} {}",
-        style(&profile.name).bold(),
-        style(format!("({source_display})")).dim()
-    );
+    if profile.is_default {
+        println!(
+            "  {} {} {}",
+            style(&profile.name).bold(),
+            style("(yarm default)").cyan(),
+            style(format!("({source_display})")).dim()
+        );
+    } else {
+        println!(
+            "  {} {}",
+            style(&profile.name).bold(),
+            style(format!("({source_display})")).dim()
+        );
+    }
 
     if let Some(identity) = profile.identity() {
         println!("    {identity}");
