@@ -323,7 +323,6 @@ fn edit_single_profile(profile: &Profile) -> Result<()> {
 
     println!();
     print_success(format!("Profile '{}' updated", profile.name));
-    println!();
 
     print_field_diff("Name", old_name.as_deref(), Some(&new_name));
     print_field_diff(
@@ -368,7 +367,6 @@ fn edit_single_profile(profile: &Profile) -> Result<()> {
             if !new_key.is_empty() { Some(if new_tag_gpg_sign { "enabled" } else { "disabled" }) } else { None },
         );
     }
-    println!();
 
     Ok(())
 }
@@ -517,7 +515,6 @@ fn create_profile() -> Result<()> {
         name,
         format_home_path(&path)
     ));
-    println!();
 
     Ok(())
 }
@@ -593,7 +590,6 @@ fn delete_single_profile(profile: &Profile) -> Result<()> {
 
     println!();
     print_success(format!("Deleted profile '{}'", profile.name));
-    println!();
 
     Ok(())
 }
