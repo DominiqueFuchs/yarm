@@ -757,10 +757,10 @@ fn derive_profile_name(path: &Path) -> String {
                 if parent_name == ".git" {
                     return "local".to_string();
                 } else if parent_name == "git" {
-                    return "default".to_string();
+                    return "global".to_string();
                 }
             }
-            "default".to_string()
+            "global".to_string()
         }
         name => {
             // Strip common extensions to get profile name
@@ -819,7 +819,7 @@ mod tests {
     fn test_derive_profile_name_gitconfig() {
         assert_eq!(
             derive_profile_name(Path::new("/Users/test/.gitconfig")),
-            "default"
+            "global"
         );
     }
 
@@ -852,7 +852,7 @@ file:/Users/test/.config/git/work.gitconfig	commit.gpgsign=true"#;
         assert_eq!(profiles.len(), 2);
 
         // Profiles are sorted by name
-        assert_eq!(profiles[0].name, "default");
+        assert_eq!(profiles[0].name, "global");
         assert_eq!(profiles[0].user_name, Some("Default User".to_string()));
         assert_eq!(
             profiles[0].user_email,
