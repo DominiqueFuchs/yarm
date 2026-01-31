@@ -96,12 +96,7 @@ fn single_profile_menu(profile: &Profile) -> Result<()> {
             }
             Ok(ProfileAction::Edit) => {
                 edit_single_profile(profile)?;
-                // Re-discover to reflect changes on next loop iteration
-                let profiles = discover_profiles()?;
-                match find_profile_by_name(&profiles, &profile.name) {
-                    Ok(updated) => return single_profile_menu(&updated),
-                    Err(_) => break,
-                }
+                break;
             }
             Ok(ProfileAction::Delete) => {
                 delete_single_profile(profile)?;
@@ -179,15 +174,15 @@ fn interactive_menu() -> Result<()> {
         match selection {
             Ok(MenuOption::Edit) => {
                 edit_profile()?;
-                session.printed_output();
+                break;
             }
             Ok(MenuOption::Create) => {
                 create_profile()?;
-                session.printed_output();
+                break;
             }
             Ok(MenuOption::Delete) => {
                 delete_profile()?;
-                session.printed_output();
+                break;
             }
             Ok(MenuOption::List) => {
                 println!();
