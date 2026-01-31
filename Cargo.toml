@@ -1,6 +1,6 @@
 [package]
 name = "yarm"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 description = "A small workflow utility for managing local git repositories. It handles git identity configuration via profiles and keeps track of repositories across directory pools."
 repository = "https://github.com/dominiquefuchs/yarm"
