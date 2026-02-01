@@ -632,3 +632,54 @@ fn is_deletable(profile: &Profile) -> bool {
         && !path_str.contains("/etc/")
         && !path_str.ends_with("/.git/config")
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    fn profile_with_source(source: &str) -> Profile {
+        Profile {
+            name: "test".to_string(),
+            source: PathBuf::from(source),
+            user_name: Some("Test".to_string()),
+            user_email: Some("test@ex.com".to_string()),
+            signing_key: None,
+            gpg_sign: None,
+            gpg_format: None,
+            tag_gpg_sign: None,
+            is_default: false,
+        }
+    }
+
+    #[test]
+    fn test_is_deletable_custom_profile() {
+        assert!(is_deletable(&profile_with_source(
+            "/home/user/.gitconfig-work"
+        )));
+    }
+
+    #[test]
+    fn test_is_deletable_xdg_profile() {
+        assert!(is_deletable(&profile_with_source(
+            "/home/user/.config/git/work.gitconfig"
+        )));
+    }
+
+    #[test]
+    fn test_is_not_deletable_main_gitconfig() {
+        assert!(!is_deletable(&profile_with_source("/home/user/.gitconfig")));
+    }
+
+    #[test]
+    fn test_is_not_deletable_system_gitconfig() {
+        assert!(!is_deletable(&profile_with_source("/etc/gitconfig")));
+    }
+
+    #[test]
+    fn test_is_not_deletable_local_git_config() {
+        assert!(!is_deletable(&profile_with_source(
+            "/home/user/project/.git/config"
+        )));
+    }
+}

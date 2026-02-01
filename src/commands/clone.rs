@@ -224,16 +224,16 @@ mod tests {
     #[test]
     fn test_extract_repo_display_name_https() {
         assert_eq!(
-            extract_repo_display_name("https://github.com/anthropics/claude-code.git"),
-            "anthropics/claude-code"
+            extract_repo_display_name("https://github.com/dominiquefuchs/yarm.git"),
+            "dominiquefuchs/yarm"
         );
     }
 
     #[test]
     fn test_extract_repo_display_name_ssh() {
         assert_eq!(
-            extract_repo_display_name("git@github.com:anthropics/claude-code.git"),
-            "anthropics/claude-code"
+            extract_repo_display_name("git@github.com:dominiquefuchs/yarm.git"),
+            "dominiquefuchs/yarm"
         );
     }
 

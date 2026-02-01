@@ -396,3 +396,62 @@ pub fn prompt_confirm(prompt: &str, default: bool) -> Result<Option<bool>> {
         Err(e) => Err(e).context("Confirmation failed"),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_format_elapsed_just_now() {
+        let time = SystemTime::now();
+        assert_eq!(format_elapsed(time), "just now");
+    }
+
+    #[test]
+    fn test_format_elapsed_seconds() {
+        let time = SystemTime::now() - Duration::from_secs(30);
+        assert_eq!(format_elapsed(time), "just now");
+    }
+
+    #[test]
+    fn test_format_elapsed_one_minute() {
+        let time = SystemTime::now() - Duration::from_secs(60);
+        assert_eq!(format_elapsed(time), "1 minute ago");
+    }
+
+    #[test]
+    fn test_format_elapsed_minutes() {
+        let time = SystemTime::now() - Duration::from_secs(45 * 60);
+        assert_eq!(format_elapsed(time), "45 minutes ago");
+    }
+
+    #[test]
+    fn test_format_elapsed_one_hour() {
+        let time = SystemTime::now() - Duration::from_secs(3600);
+        assert_eq!(format_elapsed(time), "1 hour ago");
+    }
+
+    #[test]
+    fn test_format_elapsed_hours() {
+        let time = SystemTime::now() - Duration::from_secs(5 * 3600);
+        assert_eq!(format_elapsed(time), "5 hours ago");
+    }
+
+    #[test]
+    fn test_format_elapsed_one_day() {
+        let time = SystemTime::now() - Duration::from_secs(24 * 3600);
+        assert_eq!(format_elapsed(time), "1 day ago");
+    }
+
+    #[test]
+    fn test_format_elapsed_days() {
+        let time = SystemTime::now() - Duration::from_secs(3 * 24 * 3600);
+        assert_eq!(format_elapsed(time), "3 days ago");
+    }
+
+    #[test]
+    fn test_format_elapsed_future_time() {
+        let time = SystemTime::now() + Duration::from_secs(3600);
+        assert_eq!(format_elapsed(time), "just now");
+    }
+}

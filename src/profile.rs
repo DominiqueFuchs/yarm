@@ -406,39 +406,52 @@ fn reorder_profiles_by_context(
 ) -> Vec<Profile> {
     if context.target_path.is_some() || context.clone_url.is_some() {
         let rules = parse_include_if_rules();
-        if !rules.is_empty() {
-            let matching_sources: HashSet<PathBuf> = rules
-                .iter()
-                .filter(|rule| rule.matches(context))
-                .map(|rule| rule.target_path.clone())
-                .collect();
+        return reorder_profiles_by_rules(profiles, context, &rules, default_profile);
+    }
 
-            if !matching_sources.is_empty() {
-                let mut matching = Vec::new();
-                let mut non_matching = Vec::new();
+    promote_default(profiles, default_profile)
+}
 
-                for profile in profiles {
-                    let source_canonical = profile
-                        .source
+/// Reorders profiles by matching against the given includeIf rules.
+/// Falls back to promoting the configured default profile if no rules match.
+fn reorder_profiles_by_rules(
+    profiles: Vec<Profile>,
+    context: &ProfileContext,
+    rules: &[IncludeIfRule],
+    default_profile: Option<&str>,
+) -> Vec<Profile> {
+    if !rules.is_empty() {
+        let matching_sources: HashSet<PathBuf> = rules
+            .iter()
+            .filter(|rule| rule.matches(context))
+            .map(|rule| rule.target_path.clone())
+            .collect();
+
+        if !matching_sources.is_empty() {
+            let mut matching = Vec::new();
+            let mut non_matching = Vec::new();
+
+            for profile in profiles {
+                let source_canonical = profile
+                    .source
+                    .canonicalize()
+                    .unwrap_or_else(|_| profile.source.clone());
+                let matches = matching_sources.iter().any(|rule_target| {
+                    let target_canonical = rule_target
                         .canonicalize()
-                        .unwrap_or_else(|_| profile.source.clone());
-                    let matches = matching_sources.iter().any(|rule_target| {
-                        let target_canonical = rule_target
-                            .canonicalize()
-                            .unwrap_or_else(|_| rule_target.clone());
-                        source_canonical == target_canonical
-                    });
+                        .unwrap_or_else(|_| rule_target.clone());
+                    source_canonical == target_canonical
+                });
 
-                    if matches {
-                        matching.push(profile);
-                    } else {
-                        non_matching.push(profile);
-                    }
+                if matches {
+                    matching.push(profile);
+                } else {
+                    non_matching.push(profile);
                 }
-
-                matching.extend(non_matching);
-                return matching;
             }
+
+            matching.extend(non_matching);
+            return matching;
         }
     }
 
@@ -841,11 +854,11 @@ mod tests {
 
     #[test]
     fn test_parse_git_config_output() {
-        let output = r#"file:/Users/test/.gitconfig	user.name=Default User
+        let output = r"file:/Users/test/.gitconfig	user.name=Default User
 file:/Users/test/.gitconfig	user.email=default@example.com
 file:/Users/test/.config/git/work.gitconfig	user.name=Work User
 file:/Users/test/.config/git/work.gitconfig	user.email=work@company.com
-file:/Users/test/.config/git/work.gitconfig	commit.gpgsign=true"#;
+file:/Users/test/.config/git/work.gitconfig	commit.gpgsign=true";
 
         let profiles = parse_git_config_output(output);
 
@@ -867,8 +880,8 @@ file:/Users/test/.config/git/work.gitconfig	commit.gpgsign=true"#;
 
     #[test]
     fn test_parse_git_config_output_skips_files_without_user_config() {
-        let output = r#"file:/Users/test/.gitconfig	core.editor=vim
-file:/Users/test/.gitconfig	core.pager=less"#;
+        let output = r"file:/Users/test/.gitconfig	core.editor=vim
+file:/Users/test/.gitconfig	core.pager=less";
 
         let profiles = parse_git_config_output(output);
         assert!(profiles.is_empty());
@@ -876,8 +889,8 @@ file:/Users/test/.gitconfig	core.pager=less"#;
 
     #[test]
     fn test_parse_git_config_output_last_value_wins() {
-        let output = r#"file:/Users/test/.gitconfig	user.name=First
-file:/Users/test/.gitconfig	user.name=Second"#;
+        let output = r"file:/Users/test/.gitconfig	user.name=First
+file:/Users/test/.gitconfig	user.name=Second";
 
         let profiles = parse_git_config_output(output);
         assert_eq!(profiles.len(), 1);
@@ -985,5 +998,477 @@ file:/Users/test/.gitconfig	user.name=Second"#;
             clone_url: Some("https://github.com/other/project.git".to_string()),
         };
         assert!(!rule.matches(&non_matching_context));
+    }
+
+    // --- Profile::identity() ---
+
+    #[test]
+    fn test_identity_name_and_email() {
+        let p = test_profile("t", Some("Alice"), Some("alice@ex.com"));
+        assert_eq!(p.identity(), Some("Alice <alice@ex.com>".to_string()));
+    }
+
+    #[test]
+    fn test_identity_name_only() {
+        let p = test_profile("t", Some("Alice"), None);
+        assert_eq!(p.identity(), Some("Alice".to_string()));
+    }
+
+    #[test]
+    fn test_identity_email_only() {
+        let p = test_profile("t", None, Some("alice@ex.com"));
+        assert_eq!(p.identity(), Some("<alice@ex.com>".to_string()));
+    }
+
+    #[test]
+    fn test_identity_none() {
+        let p = test_profile("t", None, None);
+        assert_eq!(p.identity(), None);
+    }
+
+    // --- find_profile_by_name ---
+
+    fn sample_profiles() -> Vec<Profile> {
+        vec![
+            test_profile_with_source(
+                "work",
+                "/home/user/.gitconfig-work",
+                Some("Work"),
+                Some("w@co.com"),
+            ),
+            test_profile_with_source(
+                ".personal",
+                "/home/user/.personal",
+                Some("Me"),
+                Some("me@me.com"),
+            ),
+            test_profile_with_source(
+                ".gitconfig-oss",
+                "/home/user/.gitconfig-oss",
+                Some("OSS"),
+                Some("oss@ex.com"),
+            ),
+            test_profile_with_source(
+                "global",
+                "/home/user/.gitconfig",
+                Some("Default"),
+                Some("d@ex.com"),
+            ),
+        ]
+    }
+
+    #[test]
+    fn test_find_profile_by_name_exact() {
+        let profiles = sample_profiles();
+        let found = find_profile_by_name(&profiles, "work").unwrap();
+        assert_eq!(found.name, "work");
+    }
+
+    #[test]
+    fn test_find_profile_by_name_exact_path() {
+        let profiles = sample_profiles();
+        let found = find_profile_by_name(&profiles, "/home/user/.gitconfig-work").unwrap();
+        assert_eq!(found.name, "work");
+    }
+
+    #[test]
+    fn test_find_profile_by_name_dot_prefix_fallback() {
+        let profiles = sample_profiles();
+        let found = find_profile_by_name(&profiles, "personal").unwrap();
+        assert_eq!(found.name, ".personal");
+    }
+
+    #[test]
+    fn test_find_profile_by_name_gitconfig_prefix_fallback() {
+        let profiles = sample_profiles();
+        let found = find_profile_by_name(&profiles, "oss").unwrap();
+        assert_eq!(found.name, ".gitconfig-oss");
+    }
+
+    #[test]
+    fn test_find_profile_by_name_not_found() {
+        let profiles = sample_profiles();
+        let result = find_profile_by_name(&profiles, "nonexistent");
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("nonexistent"));
+        assert!(err.contains("not found"));
+    }
+
+    // --- promote_default ---
+
+    #[test]
+    fn test_promote_default_moves_to_front() {
+        let profiles = vec![
+            test_profile("alpha", Some("A"), Some("a@ex.com")),
+            test_profile("beta", Some("B"), Some("b@ex.com")),
+            test_profile("gamma", Some("C"), Some("c@ex.com")),
+        ];
+        let result = promote_default(profiles, Some("gamma"));
+        assert_eq!(result[0].name, "gamma");
+        assert_eq!(result[1].name, "alpha");
+        assert_eq!(result[2].name, "beta");
+    }
+
+    #[test]
+    fn test_promote_default_none_is_noop() {
+        let profiles = vec![
+            test_profile("alpha", Some("A"), Some("a@ex.com")),
+            test_profile("beta", Some("B"), Some("b@ex.com")),
+        ];
+        let result = promote_default(profiles, None);
+        assert_eq!(result[0].name, "alpha");
+        assert_eq!(result[1].name, "beta");
+    }
+
+    #[test]
+    fn test_promote_default_not_found_is_noop() {
+        let profiles = vec![
+            test_profile("alpha", Some("A"), Some("a@ex.com")),
+            test_profile("beta", Some("B"), Some("b@ex.com")),
+        ];
+        let result = promote_default(profiles, Some("nonexistent"));
+        assert_eq!(result[0].name, "alpha");
+        assert_eq!(result[1].name, "beta");
+    }
+
+    #[test]
+    fn test_promote_default_already_first() {
+        let profiles = vec![
+            test_profile("alpha", Some("A"), Some("a@ex.com")),
+            test_profile("beta", Some("B"), Some("b@ex.com")),
+        ];
+        let result = promote_default(profiles, Some("alpha"));
+        assert_eq!(result[0].name, "alpha");
+        assert_eq!(result[1].name, "beta");
+    }
+
+    // --- derive_profile_name edge cases ---
+
+    #[test]
+    fn test_derive_profile_name_gitconfig_dash_prefix() {
+        assert_eq!(
+            derive_profile_name(Path::new("/home/user/.gitconfig-work")),
+            ".gitconfig-work"
+        );
+    }
+
+    #[test]
+    fn test_derive_profile_name_gitconfig_dot_prefix() {
+        assert_eq!(
+            derive_profile_name(Path::new("/home/user/.gitconfig.personal")),
+            ".gitconfig.personal"
+        );
+    }
+
+    #[test]
+    fn test_derive_profile_name_xdg_config() {
+        assert_eq!(
+            derive_profile_name(Path::new("/home/user/.config/git/config")),
+            "global"
+        );
+    }
+
+    #[test]
+    fn test_derive_profile_name_bare_file() {
+        assert_eq!(
+            derive_profile_name(Path::new("/custom/profiles/myprofile")),
+            "myprofile"
+        );
+    }
+
+    // --- IncludeIfRule::matches_gitdir ---
+
+    #[test]
+    fn test_matches_gitdir_directory_prefix() {
+        let tmp = tempdir("gitdir-prefix");
+        let sub = tmp.join("work").join("project");
+        std::fs::create_dir_all(&sub).unwrap();
+
+        let rule = IncludeIfRule {
+            condition: format!("gitdir:{}/", tmp.join("work").display()),
+            target_path: PathBuf::from("/dummy"),
+        };
+        let ctx = ProfileContext {
+            target_path: Some(sub),
+            clone_url: None,
+        };
+        assert!(rule.matches(&ctx));
+    }
+
+    #[test]
+    fn test_matches_gitdir_directory_prefix_no_match() {
+        let tmp = tempdir("gitdir-prefix-no");
+        let sub = tmp.join("personal").join("project");
+        std::fs::create_dir_all(&sub).unwrap();
+
+        let rule = IncludeIfRule {
+            condition: format!("gitdir:{}/", tmp.join("work").display()),
+            target_path: PathBuf::from("/dummy"),
+        };
+        let ctx = ProfileContext {
+            target_path: Some(sub),
+            clone_url: None,
+        };
+        assert!(!rule.matches(&ctx));
+    }
+
+    #[test]
+    fn test_matches_gitdir_case_insensitive() {
+        let tmp = tempdir("gitdir-case");
+        let sub = tmp.join("Work").join("project");
+        std::fs::create_dir_all(&sub).unwrap();
+
+        let rule = IncludeIfRule {
+            condition: format!("gitdir/i:{}/", tmp.join("work").display()),
+            target_path: PathBuf::from("/dummy"),
+        };
+        let ctx = ProfileContext {
+            target_path: Some(sub),
+            clone_url: None,
+        };
+        assert!(rule.matches(&ctx));
+    }
+
+    #[test]
+    fn test_matches_gitdir_no_target_path() {
+        let rule = IncludeIfRule {
+            condition: "gitdir:/some/path/".to_string(),
+            target_path: PathBuf::from("/dummy"),
+        };
+        let ctx = ProfileContext {
+            target_path: None,
+            clone_url: None,
+        };
+        assert!(!rule.matches(&ctx));
+    }
+
+    #[test]
+    fn test_matches_url_no_clone_url() {
+        let rule = IncludeIfRule {
+            condition: "hasconfig:remote.*.url:*github.com*".to_string(),
+            target_path: PathBuf::from("/dummy"),
+        };
+        let ctx = ProfileContext {
+            target_path: None,
+            clone_url: None,
+        };
+        assert!(!rule.matches(&ctx));
+    }
+
+    #[test]
+    fn test_matches_unknown_condition() {
+        let rule = IncludeIfRule {
+            condition: "onbranch:main".to_string(),
+            target_path: PathBuf::from("/dummy"),
+        };
+        let ctx = ProfileContext {
+            target_path: Some(PathBuf::from("/some/path")),
+            clone_url: Some("https://github.com/user/repo".to_string()),
+        };
+        assert!(!rule.matches(&ctx));
+    }
+
+    #[test]
+    fn test_matches_gitdir_double_star_suffix() {
+        let tmp = tempdir("gitdir-dstar");
+        let work = tmp.join("work");
+        let sub = work.join("deep").join("project");
+        std::fs::create_dir_all(&sub).unwrap();
+
+        // Canonicalize the work dir so the pattern matches the canonicalized target
+        let work_canonical = work.canonicalize().unwrap();
+        let rule = IncludeIfRule {
+            condition: format!("gitdir:{}/**", work_canonical.display()),
+            target_path: PathBuf::from("/dummy"),
+        };
+        let ctx = ProfileContext {
+            target_path: Some(sub),
+            clone_url: None,
+        };
+        assert!(rule.matches(&ctx));
+    }
+
+    // --- parse_include_if_from_file ---
+
+    #[test]
+    fn test_parse_include_if_from_file_basic() {
+        let tmp = tempdir("parse-includeif");
+        let config_file = tmp.join("gitconfig");
+        std::fs::write(
+            &config_file,
+            r#"[includeIf "gitdir:~/work/"]
+	path = ~/.config/git/work.gitconfig
+[includeIf "hasconfig:remote.*.url:*github.com/company/*"]
+	path = ~/.config/git/company.gitconfig
+[user]
+	name = Default
+"#,
+        )
+        .unwrap();
+
+        let rules = parse_include_if_from_file(&config_file);
+        assert_eq!(rules.len(), 2);
+        assert_eq!(rules[0].condition, "gitdir:~/work/");
+        assert_eq!(
+            rules[1].condition,
+            "hasconfig:remote.*.url:*github.com/company/*"
+        );
+    }
+
+    #[test]
+    fn test_parse_include_if_from_file_no_rules() {
+        let tmp = tempdir("parse-includeif-none");
+        let config_file = tmp.join("gitconfig");
+        std::fs::write(&config_file, "[user]\n\tname = Test\n").unwrap();
+
+        let rules = parse_include_if_from_file(&config_file);
+        assert!(rules.is_empty());
+    }
+
+    #[test]
+    fn test_parse_include_if_from_file_nonexistent() {
+        let rules = parse_include_if_from_file(Path::new("/nonexistent/gitconfig"));
+        assert!(rules.is_empty());
+    }
+
+    // --- glob_match edge cases ---
+
+    #[test]
+    fn test_glob_match_single_star_matches_anything() {
+        assert!(glob_match("*", "anything"));
+        assert!(glob_match("*", ""));
+    }
+
+    #[test]
+    fn test_glob_match_double_star_matches_anything() {
+        assert!(glob_match("**", "anything/with/slashes"));
+    }
+
+    #[test]
+    fn test_glob_match_empty_pattern_empty_text() {
+        assert!(glob_match("", ""));
+        assert!(!glob_match("", "notempty"));
+    }
+
+    #[test]
+    fn test_glob_match_no_wildcard_must_be_exact() {
+        assert!(glob_match("/exact/path", "/exact/path"));
+        assert!(!glob_match("/exact/path", "/exact/path/extra"));
+    }
+
+    // --- reorder_profiles_by_context (with injected rules) ---
+
+    #[test]
+    fn test_reorder_by_matching_rules() {
+        let profiles = vec![
+            test_profile_with_source(
+                "personal",
+                "/home/user/.gitconfig-personal",
+                Some("P"),
+                Some("p@ex.com"),
+            ),
+            test_profile_with_source(
+                "work",
+                "/home/user/.gitconfig-work",
+                Some("W"),
+                Some("w@co.com"),
+            ),
+        ];
+
+        let rules = vec![IncludeIfRule {
+            condition: "hasconfig:remote.*.url:*company.com*".to_string(),
+            target_path: PathBuf::from("/home/user/.gitconfig-work"),
+        }];
+
+        let context = ProfileContext {
+            target_path: None,
+            clone_url: Some("https://company.com/repo.git".to_string()),
+        };
+
+        let result = reorder_profiles_by_rules(profiles, &context, &rules, None);
+        assert_eq!(result[0].name, "work");
+        assert_eq!(result[1].name, "personal");
+    }
+
+    #[test]
+    fn test_reorder_no_matching_rules_falls_back_to_default() {
+        let profiles = vec![
+            test_profile("alpha", Some("A"), Some("a@ex.com")),
+            test_profile("beta", Some("B"), Some("b@ex.com")),
+        ];
+
+        let rules = vec![IncludeIfRule {
+            condition: "hasconfig:remote.*.url:*nomatch*".to_string(),
+            target_path: PathBuf::from("/dummy"),
+        }];
+
+        let context = ProfileContext {
+            target_path: None,
+            clone_url: Some("https://github.com/user/repo.git".to_string()),
+        };
+
+        let result = reorder_profiles_by_rules(profiles, &context, &rules, Some("beta"));
+        assert_eq!(result[0].name, "beta");
+        assert_eq!(result[1].name, "alpha");
+    }
+
+    #[test]
+    fn test_reorder_empty_rules_falls_back_to_default() {
+        let profiles = vec![
+            test_profile("alpha", Some("A"), Some("a@ex.com")),
+            test_profile("beta", Some("B"), Some("b@ex.com")),
+        ];
+
+        let context = ProfileContext {
+            target_path: Some(PathBuf::from("/some/path")),
+            clone_url: None,
+        };
+
+        let result = reorder_profiles_by_rules(profiles, &context, &[], Some("beta"));
+        assert_eq!(result[0].name, "beta");
+        assert_eq!(result[1].name, "alpha");
+    }
+
+    // --- test helpers ---
+
+    fn test_profile(name: &str, user_name: Option<&str>, user_email: Option<&str>) -> Profile {
+        Profile {
+            name: name.to_string(),
+            source: PathBuf::from(format!("/test/{name}")),
+            user_name: user_name.map(String::from),
+            user_email: user_email.map(String::from),
+            signing_key: None,
+            gpg_sign: None,
+            gpg_format: None,
+            tag_gpg_sign: None,
+            is_default: false,
+        }
+    }
+
+    fn test_profile_with_source(
+        name: &str,
+        source: &str,
+        user_name: Option<&str>,
+        user_email: Option<&str>,
+    ) -> Profile {
+        Profile {
+            name: name.to_string(),
+            source: PathBuf::from(source),
+            user_name: user_name.map(String::from),
+            user_email: user_email.map(String::from),
+            signing_key: None,
+            gpg_sign: None,
+            gpg_format: None,
+            tag_gpg_sign: None,
+            is_default: false,
+        }
+    }
+
+    fn tempdir(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("yarm-test-{name}"));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
     }
 }

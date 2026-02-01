@@ -191,10 +191,10 @@ pools = ["~/projects"]
     #[test]
     fn test_auto_rescan_explicit_false() {
         let config: Config = toml::from_str(
-            r#"
+            r"
 [repositories]
 auto_rescan = false
-"#,
+",
         )
         .unwrap();
         assert!(!config.repositories.auto_rescan);
