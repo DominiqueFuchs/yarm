@@ -44,24 +44,19 @@ impl IncludeIfRule {
     /// Checks if this rule matches the given context
     fn matches(&self, context: &ProfileContext) -> bool {
         if let Some(pattern) = self.condition.strip_prefix("gitdir:") {
-            return self.matches_gitdir(pattern, context, false);
+            return Self::matches_gitdir(pattern, context, false);
         }
         if let Some(pattern) = self.condition.strip_prefix("gitdir/i:") {
-            return self.matches_gitdir(pattern, context, true);
+            return Self::matches_gitdir(pattern, context, true);
         }
         if let Some(pattern) = self.condition.strip_prefix("hasconfig:remote.*.url:") {
-            return self.matches_url(pattern, context);
+            return Self::matches_url(pattern, context);
         }
         false
     }
 
     /// Matches gitdir: patterns against the target path
-    fn matches_gitdir(
-        &self,
-        pattern: &str,
-        context: &ProfileContext,
-        case_insensitive: bool,
-    ) -> bool {
+    fn matches_gitdir(pattern: &str, context: &ProfileContext, case_insensitive: bool) -> bool {
         let Some(target) = &context.target_path else {
             return false;
         };
@@ -90,7 +85,7 @@ impl IncludeIfRule {
         if pattern.ends_with('/') || pattern.ends_with("/**") {
             // Directory prefix match
             let prefix = pattern_cmp.trim_end_matches('/').trim_end_matches("**");
-            target_cmp.starts_with(&prefix)
+            target_cmp.starts_with(prefix)
         } else if pattern.contains('*') {
             // Glob pattern - simple wildcard matching
             glob_match(&pattern_cmp, &target_cmp)
@@ -101,7 +96,7 @@ impl IncludeIfRule {
     }
 
     /// Matches hasconfig:remote.*.url: patterns against the clone URL
-    fn matches_url(&self, pattern: &str, context: &ProfileContext) -> bool {
+    fn matches_url(pattern: &str, context: &ProfileContext) -> bool {
         let Some(url) = &context.clone_url else {
             return false;
         };
@@ -133,12 +128,10 @@ fn glob_match(pattern: &str, text: &str) -> bool {
             if !text.ends_with(part) {
                 return false;
             }
+        } else if let Some(found) = text[pos..].find(part) {
+            pos += found + part.len();
         } else {
-            if let Some(found) = text[pos..].find(part) {
-                pos += found + part.len();
-            } else {
-                return false;
-            }
+            return false;
         }
     }
 
@@ -168,9 +161,8 @@ fn parse_include_if_rules() -> Vec<IncludeIfRule> {
 fn parse_include_if_from_file(path: &Path) -> Vec<IncludeIfRule> {
     let mut rules = Vec::new();
 
-    let content = match fs::read_to_string(path) {
-        Ok(c) => c,
-        Err(_) => return rules,
+    let Ok(content) = fs::read_to_string(path) else {
+        return rules;
     };
 
     let mut current_condition: Option<String> = None;
@@ -185,17 +177,16 @@ fn parse_include_if_from_file(path: &Path) -> Vec<IncludeIfRule> {
             current_condition = Some(condition.to_string());
         } else if line.starts_with('[') {
             current_condition = None;
-        } else if let Some(ref condition) = current_condition {
-            if let Some(path_value) = line
+        } else if let Some(ref condition) = current_condition
+            && let Some(path_value) = line
                 .strip_prefix("path")
                 .and_then(|s| s.trim_start().strip_prefix('='))
-                .map(|s| s.trim())
-            {
-                rules.push(IncludeIfRule {
-                    condition: condition.clone(),
-                    target_path: expand_tilde(path_value),
-                });
-            }
+                .map(str::trim)
+        {
+            rules.push(IncludeIfRule {
+                condition: condition.clone(),
+                target_path: expand_tilde(path_value),
+            });
         }
     }
 
@@ -345,10 +336,10 @@ pub fn discover_profiles() -> Result<Vec<Profile>> {
     profiles.extend(git_profiles);
     profiles.extend(additional_profiles);
 
-    if let Some(default_name) = config.profiles.default.as_deref() {
-        if let Some(p) = profiles.iter_mut().find(|p| p.name == default_name) {
-            p.is_default = true;
-        }
+    if let Some(default_name) = config.profiles.default.as_deref()
+        && let Some(p) = profiles.iter_mut().find(|p| p.name == default_name)
+    {
+        p.is_default = true;
     }
 
     Ok(profiles)

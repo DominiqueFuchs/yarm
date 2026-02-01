@@ -216,7 +216,10 @@ fn edit_profile() -> Result<()> {
         return Ok(());
     }
 
-    let options: Vec<String> = profiles.iter().map(|p| p.display_option()).collect();
+    let options: Vec<String> = profiles
+        .iter()
+        .map(super::super::profile::Profile::display_option)
+        .collect();
 
     let selection = match MenuLevel::Sub
         .select_filterable("Select profile to edit:", options.clone())
@@ -237,6 +240,7 @@ fn edit_profile() -> Result<()> {
 }
 
 /// Edit a known profile
+#[allow(clippy::too_many_lines)]
 fn edit_single_profile(profile: &Profile) -> Result<()> {
     println!();
     println!("  Editing: {}", style(&profile.name).bold());
@@ -361,10 +365,10 @@ fn edit_single_profile(profile: &Profile) -> Result<()> {
         } else {
             None
         };
-        let effective_new_format = if !new_key.is_empty() {
-            Some(new_format.as_deref().unwrap_or("openpgp"))
-        } else {
+        let effective_new_format = if new_key.is_empty() {
             None
+        } else {
+            Some(new_format.as_deref().unwrap_or("openpgp"))
         };
         print_field_diff("Format", effective_old_format, effective_new_format);
         print_field_diff(
@@ -376,10 +380,10 @@ fn edit_single_profile(profile: &Profile) -> Result<()> {
                     "disabled"
                 }
             }),
-            if !new_key.is_empty() {
-                Some(if new_gpg_sign { "enabled" } else { "disabled" })
-            } else {
+            if new_key.is_empty() {
                 None
+            } else {
+                Some(if new_gpg_sign { "enabled" } else { "disabled" })
             },
         );
         print_field_diff(
@@ -391,14 +395,14 @@ fn edit_single_profile(profile: &Profile) -> Result<()> {
                     "disabled"
                 }
             }),
-            if !new_key.is_empty() {
+            if new_key.is_empty() {
+                None
+            } else {
                 Some(if new_tag_gpg_sign {
                     "enabled"
                 } else {
                     "disabled"
                 })
-            } else {
-                None
             },
         );
     }

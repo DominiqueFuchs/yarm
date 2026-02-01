@@ -84,15 +84,16 @@ fn resolve_target(repo: Option<String>) -> Result<PathBuf> {
             }
             Ok(cwd)
         }
-        Some(name_or_path) => match super::find::resolve_repo(&name_or_path) {
-            Ok(path) => Ok(path),
-            Err(_) => {
+        Some(name_or_path) => {
+            if let Ok(path) = super::find::resolve_repo(&name_or_path) {
+                Ok(path)
+            } else {
                 print_warning(format!(
                     "'{name_or_path}' is not a known repository name or a valid git repo path"
                 ));
-                return Err(SilentExit(1).into());
+                Err(SilentExit(1).into())
             }
-        },
+        }
     }
 }
 
@@ -106,8 +107,7 @@ fn last_fetch_time(repo: &Path) -> Option<SystemTime> {
     let candidates = [".git/FETCH_HEAD", ".git/HEAD"];
     candidates
         .iter()
-        .filter_map(|f| fs::metadata(repo.join(f)).ok()?.modified().ok())
-        .next()
+        .find_map(|f| fs::metadata(repo.join(f)).ok()?.modified().ok())
 }
 
 fn dir_stats(path: &Path) -> (u64, u64, u64) {

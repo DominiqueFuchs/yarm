@@ -90,17 +90,17 @@ fn config_path() -> Option<PathBuf> {
 pub fn is_in_pool(path: &Path, pools: &[PathBuf]) -> bool {
     let canonical = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
     pools.iter().any(|pool| {
-        let canonical_pool = pool.canonicalize().unwrap_or_else(|_| pool.to_path_buf());
+        let canonical_pool = pool.canonicalize().unwrap_or_else(|_| pool.clone());
         canonical.starts_with(&canonical_pool)
     })
 }
 
 /// Expands a leading `~/` to the user's home directory.
 pub fn expand_tilde(path: &str) -> PathBuf {
-    if let Some(rest) = path.strip_prefix("~/") {
-        if let Some(home) = dirs::home_dir() {
-            return home.join(rest);
-        }
+    if let Some(rest) = path.strip_prefix("~/")
+        && let Some(home) = dirs::home_dir()
+    {
+        return home.join(rest);
     }
     PathBuf::from(path)
 }

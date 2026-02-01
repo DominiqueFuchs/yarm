@@ -1,5 +1,5 @@
 use anyhow::Result;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::commands::find;
 use crate::git;
@@ -22,7 +22,7 @@ pub fn run(name: Option<&str>, profile_name: Option<&str>, pool: Option<&str>) -
     apply_to_repo(&target, profile_name)
 }
 
-fn apply_to_repo(target: &PathBuf, profile_name: Option<&str>) -> Result<()> {
+fn apply_to_repo(target: &Path, profile_name: Option<&str>) -> Result<()> {
     let display_path = target
         .canonicalize()
         .ok()
@@ -36,7 +36,7 @@ fn apply_to_repo(target: &PathBuf, profile_name: Option<&str>) -> Result<()> {
     print_header("Repository:", &display_path);
     println!();
 
-    let context = ProfileContext::new(target.clone(), None);
+    let context = ProfileContext::new(target.to_path_buf(), None);
     let Some(selected) = resolve_profile_with_context(profile_name, &context)? else {
         return Ok(());
     };
@@ -78,10 +78,10 @@ fn run_pool(pool_name: &str, profile_name: Option<&str>) -> Result<()> {
 
     let mut applied = 0;
     for repo in &repos {
-        let display = repo
-            .file_name()
-            .map(|n| n.to_string_lossy().into_owned())
-            .unwrap_or_else(|| repo.display().to_string());
+        let display = repo.file_name().map_or_else(
+            || repo.display().to_string(),
+            |n| n.to_string_lossy().into_owned(),
+        );
 
         apply_profile(repo, &selected)?;
         print_success(format!("Applied to {display}"));

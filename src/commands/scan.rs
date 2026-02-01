@@ -125,10 +125,10 @@ fn scan_directory(root: &Path, exclude: &GlobSet) -> Vec<PathBuf> {
                 continue;
             }
 
-            if let Ok(rel) = path.strip_prefix(root) {
-                if exclude.is_match(rel) {
-                    continue;
-                }
+            if let Ok(rel) = path.strip_prefix(root)
+                && exclude.is_match(rel)
+            {
+                continue;
             }
 
             subdirs.push(path);

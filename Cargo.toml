@@ -11,7 +11,7 @@ categories = ["command-line-utilities", "development-tools"]
 exclude = [".github/", "examples/"]
 
 [lints.clippy]
-pedantic = "warn"
+pedantic = "deny"
 
 [dependencies]
 anyhow = "1.0.100"

@@ -30,7 +30,7 @@ pub fn run(repo: Option<&str>, pool: Option<&str>) -> Result<()> {
             if let Some(suggestion) = find_suggestion(&state.repositories, repo) {
                 eprint_hint(format!("Did you mean '{suggestion}'?"));
             }
-            return Err(SilentExit(1).into());
+            Err(SilentExit(1).into())
         }
         1 => {
             println!("{}", matches[0].display());
@@ -44,7 +44,7 @@ pub fn run(repo: Option<&str>, pool: Option<&str>) -> Result<()> {
             for m in &matches {
                 eprintln!("  {}", format_home_path(m));
             }
-            return Err(SilentExit(1).into());
+            Err(SilentExit(1).into())
         }
     }
 }

@@ -295,12 +295,10 @@ impl<'a> FilterableSelect<'a> {
                             .iter()
                             .any(|opt| opt.to_lowercase().contains(&input_lower));
                         if any_match { None } else { Some(0) }
+                    } else if string_value.to_lowercase().contains(&input_lower) {
+                        Some(0)
                     } else {
-                        if string_value.to_lowercase().contains(&input_lower) {
-                            Some(0)
-                        } else {
-                            None
-                        }
+                        None
                     }
                 };
 
@@ -311,7 +309,6 @@ impl<'a> FilterableSelect<'a> {
             {
                 Ok(selection) if selection == placeholder => {
                     let _ = term.clear_last_lines(1);
-                    continue;
                 }
                 Ok(selection) => return Ok(selection),
                 Err(e) if is_cancelled(&e) => {
