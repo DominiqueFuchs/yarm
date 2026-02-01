@@ -25,3 +25,7 @@ exclude = [
 
 # Automatically rescan pools for new/removed repositories (default: true)
 auto_rescan = true
+
+# Maximum directory depth to scan within each pool (default: None = unlimited)
+# Depth 0 = pool root only, 1 = immediate subdirectories, etc.
+# max_depth = 3

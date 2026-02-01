@@ -28,6 +28,8 @@ pub struct RepositoriesConfig {
     pub exclude: Vec<String>,
     #[serde(default = "default_true")]
     pub auto_rescan: bool,
+    #[serde(default)]
+    pub max_depth: Option<u32>,
 }
 
 impl Default for RepositoriesConfig {
@@ -36,6 +38,7 @@ impl Default for RepositoriesConfig {
             pools: Vec::new(),
             exclude: Vec::new(),
             auto_rescan: true,
+            max_depth: None,
         }
     }
 }
@@ -198,6 +201,24 @@ auto_rescan = false
         )
         .unwrap();
         assert!(!config.repositories.auto_rescan);
+    }
+
+    #[test]
+    fn test_max_depth_defaults_none() {
+        let config: Config = toml::from_str("").unwrap();
+        assert!(config.repositories.max_depth.is_none());
+    }
+
+    #[test]
+    fn test_max_depth_explicit_value() {
+        let config: Config = toml::from_str(
+            r"
+[repositories]
+max_depth = 3
+",
+        )
+        .unwrap();
+        assert_eq!(config.repositories.max_depth, Some(3));
     }
 
     #[test]
