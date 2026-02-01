@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/DominiqueFuchs/yarm/compare/v0.2.0...v0.3.0) (2026-02-01)
+
+
+### Features
+
+* add max_depth configuration option, allows to limit recursive pool scan depth ([3760f64](https://github.com/DominiqueFuchs/yarm/commit/3760f64fef009e74c1698d17be9b947b3274ab28))
+
 ## [0.2.0](https://github.com/DominiqueFuchs/yarm/compare/v0.1.0...v0.2.0) (2026-01-31)
 
 
