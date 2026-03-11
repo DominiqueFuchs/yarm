@@ -20,7 +20,7 @@ clap_complete = "4.5"
 console = "0.16.2"
 dirs = "6.0.0"
 indicatif = "0.18.4"
-inquire = "0.9.3"
+inquire = "0.9.4"
 serde = { version = "1", features = ["derive"] }
 thiserror = "2.0.18"
 bitcode = { version = "0.6", features = ["serde"] }
