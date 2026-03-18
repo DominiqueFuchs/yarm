@@ -1,6 +1,6 @@
 # yarm – Yet Another Repository Manager
 
-[![CI](https://github.com/DominiqueFuchs/yarm/actions/workflows/ci.yml/badge.svg)](https://github.com/DominiqueFuchs/yarm/actions/workflows/ci.yml)
+[![CI](https://github.com/dmnq-f/yarm/actions/workflows/ci.yml/badge.svg)](https://github.com/dmnq-f/yarm/actions/workflows/ci.yml)
 [![crates.io](https://img.shields.io/crates/v/yarm.svg)](https://crates.io/crates/yarm)
 
 A small workflow utility for managing local git repositories. It handles git identity configuration via profiles and keeps track of repositories across directory pools.
@@ -32,7 +32,7 @@ Help texts are available for yarm and all of its subcommands with usage instruct
 | `yarm profiles [name]` | Manage profiles interactively, or target a specific profile |
 | `yarm profiles [name] --show` | List all profiles, or print a specific profile's details |
 
-![animated terminal profile management demonstration](https://raw.githubusercontent.com/DominiqueFuchs/yarm/main/.github/demo_profiles.gif)
+![animated terminal profile management demonstration](https://raw.githubusercontent.com/dmnq-f/yarm/main/.github/demo_profiles.gif)
 
 ### Repository Setup, Info and Statistics
 
@@ -46,7 +46,7 @@ Clone, init, and apply all accept `-p <profile>` to skip interactive selection. 
 | `yarm apply -P <pool>` | Apply a profile to all repositories in a pool |
 | `yarm stat [repo]` | Show branch, remote, status, size, last fetch |
 
-![animated terminal repository setup demonstration](https://raw.githubusercontent.com/DominiqueFuchs/yarm/main/.github/demo_repositories.gif)
+![animated terminal repository setup demonstration](https://raw.githubusercontent.com/dmnq-f/yarm/main/.github/demo_repositories.gif)
 
 ### Repository Tracking and Navigation
 
@@ -62,7 +62,7 @@ Clone, init, and apply all accept `-p <profile>` to skip interactive selection. 
 
 `stat` accepts a repository name, path, or defaults to the current directory.
 
-![animated terminal profile management demonstration](https://raw.githubusercontent.com/DominiqueFuchs/yarm/main/.github/demo_navigate.gif)
+![animated terminal profile management demonstration](https://raw.githubusercontent.com/dmnq-f/yarm/main/.github/demo_navigate.gif)
 
 ### Shell Completions and Functions
 
